@@ -7,8 +7,8 @@ from collections.abc import Callable
 from rock.core.adjudication import AdjudicationEngine
 from rock.core.contracts import Council, CouncilProtocol, Model, Response, Task, Verification
 from rock.core.evidence import EvidenceEngine
-from rock.core.providers import Provider, ProviderError
 from rock.core.protocols import ProtocolContext, get_protocol
+from rock.core.providers import Provider, ProviderError
 
 
 EventSink = Callable[[str, str, str, str, str | None], None]
