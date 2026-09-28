@@ -85,6 +85,7 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
             "council_synthesizer_model": settings.rock_council_synthesizer_model,
             "council_verifier_model": settings.rock_council_verifier_model,
             "council_judge_model": settings.rock_council_judge_model,
+            "council_red_team_model": settings.rock_council_red_team_model,
         },
     )
 
