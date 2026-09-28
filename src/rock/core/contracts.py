@@ -129,6 +129,7 @@ class Conflict(BaseModel):
     topic: str
     claims: list[str] = Field(default_factory=list)
     claim_ids: list[str] = Field(default_factory=list)
+    claim_statements: dict[str, str] = Field(default_factory=dict)
     sources: list[str] = Field(default_factory=list)
     severity: float = 0.5
     resolved: bool = False
