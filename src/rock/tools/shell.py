@@ -38,14 +38,16 @@ class ShellTool:
                 cwd=os.getcwd(),
             )
             stdout, stderr = await process.communicate()
-            execution.status = ExecutionStatus.SUCCESS if process.returncode == 0 else ExecutionStatus.FAILED
+            execution.status = (
+                ExecutionStatus.SUCCESS if process.returncode == 0 else ExecutionStatus.FAILED
+            )
             execution.output = {
                 "returncode": process.returncode,
                 "stdout": stdout.decode(errors="replace"),
                 "stderr": stderr.decode(errors="replace"),
             }
             return execution
-        except Exception as exc:
+        except OSError as exc:
             execution.status = ExecutionStatus.FAILED
             execution.error = str(exc)
             return execution
