@@ -30,8 +30,6 @@ class CostBudget:
             self.total += amount
 
 
-
-
 class CouncilEngine:
     def __init__(self, providers: dict[str, Provider], models: dict[str, Model]) -> None:
         self.providers = providers
