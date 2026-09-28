@@ -11,6 +11,7 @@ from rock.core.protocols import ProtocolContext, get_protocol
 from rock.core.providers import Provider, ProviderError
 
 
+
 EventSink = Callable[[str, str, str, str, str | None], None]
 
 class CostBudget:
