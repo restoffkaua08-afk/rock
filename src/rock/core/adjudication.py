@@ -27,9 +27,13 @@ class AdjudicationEngine:
             f"TASK:\n{task.prompt}\n\n"
             f"CONFLICT ID: {conflict.id}\n"
             f"TOPIC: {conflict.topic}\n"
-            f"SOURCES: {', '.join(conflict.sources)}\n\n"
+            f"SOURCES: {', '.join(conflict.sources)}\n"
+            f"CLAIM IDS: {', '.join(conflict.claim_ids)}\n\n"
             "CLAIMS:\n"
-            + "\n\n".join(f"- {claim}" for claim in conflict.claims)
+            + "\n\n".join(
+                f"- [{claim_id}] {claim}"
+                for claim_id, claim in zip(conflict.claim_ids, conflict.claims, strict=False)
+            )
         )
         response = await engine.debate_turn(
             task,
@@ -65,6 +69,7 @@ class AdjudicationEngine:
 
         return Adjudication(
             conflict_id=conflict.id,
+            claim_ids=conflict.claim_ids.copy(),
             status=status,
             decision=body or "No adjudication decision was returned.",
             rationale=body,
