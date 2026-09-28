@@ -37,8 +37,15 @@ def build_engine() -> tuple[CouncilEngine, list[str]]:
     providers: dict[str, Provider] = {}
     models: dict[str, Model] = {}
     selected: list[str] = []
+    requested = (
+        {name.strip().lower() for name in settings.rock_council_models.split(",") if name.strip()}
+        if settings.rock_council_models
+        else None
+    )
 
     for provider_name, model_name, configured in definitions:
+        if requested is not None and provider_name not in requested:
+            continue
         if settings.rock_mode.lower() == "mock":
             provider = MockProvider(provider_name)
         elif configured:
