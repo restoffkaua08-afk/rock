@@ -190,7 +190,11 @@ class CritiqueSynthesisProtocol(CouncilProtocolRunner):
 
     async def critique_rounds(self, engine, context, critic_model, rounds, *, event_sink=None):
         critique = await engine.critique(
-            context.task, context.responses, critic_model, event_sink=event_sink
+            context.task,
+            context.responses,
+            critic_model,
+            event_sink=event_sink,
+            cost_budget=context.cost_budget,
         )
         for round_number in range(2, rounds + 1):
             engine._emit(
@@ -206,7 +210,11 @@ class CritiqueSynthesisProtocol(CouncilProtocolRunner):
                 )
             ]
             critique = await engine.critique(
-                context.task, augmented, critic_model, event_sink=event_sink
+                context.task,
+                augmented,
+                critic_model,
+                event_sink=event_sink,
+                cost_budget=context.cost_budget,
             )
         return ProtocolResult(
             protocol=self.protocol,
