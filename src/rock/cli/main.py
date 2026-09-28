@@ -323,7 +323,13 @@ def doctor(
                     return results
 
                 results = asyncio.run(check_providers())
-                display_names = {"openai": "OpenAI", "anthropic": "Anthropic", "deepseek": "DeepSeek", "perplexity": "Perplexity", "gemini": "Gemini"}
+                display_names = {
+                    "openai": "OpenAI",
+                    "anthropic": "Anthropic",
+                    "deepseek": "DeepSeek",
+                    "perplexity": "Perplexity",
+                    "gemini": "Gemini",
+                }
                 for name, model, healthy in results:
                     display_name = display_names.get(name, name)
                     console.print(
