@@ -310,9 +310,11 @@ class CouncilEngine:
         adjudication_material = "\n\n".join(f"[{item.conflict_id}] {item.status.value}: {item.decision}" for item in (adjudications or []))
         prompt = (
             "You are Rock's verification agent. Check the proposed synthesis against the "
-            "available independent answers. Look for factual contradictions, unsupported "
-            "claims, omissions and internal inconsistency. Return PASS or FAIL first, then "
-            "brief findings. Do not invent external evidence.\n\n"
+            "available independent answers, exact claims and adjudications. Look for factual "
+            "contradictions, unsupported claims, omissions and internal inconsistency. A claim "
+            "marked INCONCLUSIVE must not be presented as established fact. A RESOLVED "
+            "adjudication must not be contradicted without explicit new evidence. Return PASS "
+            "or FAIL first, then brief findings. Do not invent external evidence.\n\n"
             f"TASK:\n{task.prompt}\n\nSYNTHESIS:\n{synthesis.content}\n\n"
             "SOURCE ANSWERS:\n"
             + "\n\n".join(r.content for r in responses)
@@ -342,7 +344,7 @@ class CouncilEngine:
             claim_ids=[claim.id for item in (evidence or []) for claim in item.claims],
             adjudication_ids=[item.conflict_id for item in (adjudications or [])],
             verifier=f"{model.provider}/{model.model_name}",
-            checks=["model_cross_check", "source_consistency", "non_empty_synthesis"],
+            checks=["model_cross_check", "claim_consistency", "adjudication_consistency", "source_consistency", "non_empty_synthesis"],
             passed=passed,
             findings=[text] if text else [result.error or "verification failed"],
             confidence=0.85 if passed else 0.25,
