@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
-
-from rock.core.contracts import Conflict, Evidence, Response
+from rock.core.contracts import Claim, Conflict, Evidence, Response
 
 
 class EvidenceEngine:
@@ -14,12 +12,26 @@ class EvidenceEngine:
         for index, response in enumerate(responses, 1):
             if response.error or not response.content.strip():
                 continue
+            evidence_id = f"response-{index}"
+            source = f"{response.provider}/{response.model}"
+            statements = _extract_claims(response.content)
+            claims = [
+                Claim(
+                    id=f"{evidence_id}-claim-{claim_index}",
+                    statement=statement,
+                    source=source,
+                    evidence_id=evidence_id,
+                    metadata={"kind": "model_claim"},
+                )
+                for claim_index, statement in enumerate(statements, 1)
+            ]
             evidence.append(
                 Evidence(
-                    id=f"response-{index}",
-                    source=f"{response.provider}/{response.model}",
+                    id=evidence_id,
+                    source=source,
                     content=response.content.strip(),
                     provider=response.provider,
+                    claims=claims,
                     metadata={"kind": "model_response", "model": response.model},
                 )
             )
@@ -45,6 +57,7 @@ class EvidenceEngine:
                         id=f"conflict-{len(conflicts) + 1}",
                         topic="shared claims",
                         claims=[left.content[:500], right.content[:500]],
+                        claim_ids=_claim_ids(left, right),
                         sources=[
                             f"{left.provider}/{left.model}",
                             f"{right.provider}/{right.model}",
@@ -77,3 +90,21 @@ def _contradiction_markers(left: str, right: str) -> list[str]:
         if (first in a and second in b) or (second in a and first in b):
             markers.append(f"{first}/{second}")
     return markers
+
+
+def _extract_claims(text: str) -> list[str]:
+    """Extract coarse, sentence-level claims without pretending to prove them."""
+    statements = []
+    for part in text.replace("\n", " ").split("."):
+        statement = part.strip()
+        if len(statement) >= 12:
+            statements.append(statement + ".")
+    return statements or [text.strip()]
+
+
+def _claim_ids(left: Response, right: Response) -> list[str]:
+    ids = []
+    for index, response in enumerate((left, right), 1):
+        for claim_index, statement in enumerate(_extract_claims(response.content), 1):
+            ids.append(f"response-{index}-claim-{claim_index}")
+    return ids
