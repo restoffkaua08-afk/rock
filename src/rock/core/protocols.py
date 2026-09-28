@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 from rock.core.contracts import CouncilProtocol, ProtocolResult, Response
 
 if TYPE_CHECKING:
-    from rock.core.council import CouncilEngine
     from rock.core.contracts import Task
+    from rock.core.council import CouncilEngine
 
 @dataclass(frozen=True)
 class ProtocolContext:
