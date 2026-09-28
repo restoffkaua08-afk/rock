@@ -1,4 +1,7 @@
-from rock.core.contracts import CouncilProtocol
+import pytest
+
+from rock.core.contracts import CouncilProtocol, Model, Task
+from rock.core.council import CouncilEngine
 from rock.core.protocols import (
     CritiqueSynthesisProtocol,
     ParallelProtocol,
@@ -6,7 +9,7 @@ from rock.core.protocols import (
     VoteProtocol,
     get_protocol,
 )
-
+from rock.providers.mock import MockProvider
 
 def test_protocol_registry_returns_expected_runner() -> None:
     assert isinstance(get_protocol(CouncilProtocol.PARALLEL), ParallelProtocol)
@@ -21,12 +24,6 @@ def test_protocol_registry_returns_vote_runner() -> None:
     assert isinstance(get_protocol(CouncilProtocol.VOTE), VoteProtocol)
 
 
-
-import pytest
-
-from rock.core.contracts import Model, Task
-from rock.core.council import CouncilEngine
-from rock.providers.mock import MockProvider
 
 
 @pytest.mark.asyncio
