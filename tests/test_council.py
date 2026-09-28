@@ -71,3 +71,44 @@ async def test_council_roles_can_use_different_models() -> None:
     assert "Mock synthesis from a" in synthesis
     assert verification.verifier == "b/mock-b"
     assert verification.passed
+
+
+@pytest.mark.asyncio
+async def test_verification_loop_can_correct_synthesis() -> None:
+    from rock.core.providers import Provider
+    from rock.core.contracts import Model, Response, Task
+
+    class OneTimeReview(Provider):
+        def __init__(self):
+            self.calls = 0
+
+        async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
+            self.calls += 1
+            text = "FAIL\ncorrectable finding" if self.calls == 1 else "PASS\ncorrected"
+            return Response(provider=model.provider, model=model.model_name, content=text)
+
+    reviewer = OneTimeReview()
+    engine = CouncilEngine(
+        {"writer": MockProvider("writer"), "reviewer": reviewer},
+        {
+            "writer:default": Model(id="writer:default", provider="writer", model_name="mock-writer"),
+            "reviewer:default": Model(id="reviewer:default", provider="reviewer", model_name="mock-reviewer"),
+        },
+    )
+    task = Task(
+        id="verification-loop",
+        prompt="answer reliably",
+        policy={"budget": {"max_rounds": 2}},
+        metadata={
+            "council_synthesizer_model": "writer",
+            "council_verifier_model": "reviewer",
+        },
+    )
+
+    synthesis, verification, _ = await engine.run(
+        task, ["writer:default", "reviewer:default"]
+    )
+
+    assert "Mock synthesis from writer" in synthesis
+    assert reviewer.calls == 2
+    assert verification.passed
