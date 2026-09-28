@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from rock.core.contracts import Claim, Conflict, Evidence, Response
 
 
@@ -21,6 +23,7 @@ class EvidenceEngine:
                     statement=statement,
                     source=source,
                     evidence_id=evidence_id,
+                    polarity=_claim_polarity(statement),
                     metadata={"kind": "model_claim"},
                 )
                 for claim_index, statement in enumerate(statements, 1)
@@ -104,6 +107,19 @@ def _key_terms(text: str) -> set[str]:
     return {word for word in words if len(word) >= 5}
 
 
+def _claim_polarity(text: str) -> str | None:
+    lowered = text.lower()
+    positive = re.search(r"\\b(required|mandatory|always|true|yes|supports)\\b", lowered)
+    negative = re.search(r"\\b(optional|never|false|no|unsupported|does not support)\\b", lowered)
+    if positive and negative:
+        return "mixed"
+    if positive:
+        return "positive"
+    if negative:
+        return "negative"
+    return None
+
+
 def _contradiction_markers(left: str, right: str) -> list[str]:
     markers = []
     pairs = (
@@ -119,7 +135,13 @@ def _contradiction_markers(left: str, right: str) -> list[str]:
     for first, second in pairs:
         if (first in a and second in b) or (second in a and first in b):
             markers.append(f"{first}/{second}")
-    return markers
+
+    left_polarity = _claim_polarity(left)
+    right_polarity = _claim_polarity(right)
+    if {left_polarity, right_polarity} == {"positive", "negative"}:
+        markers.append("polarity/positive-negative")
+
+    return list(dict.fromkeys(markers))
 
 
 def _extract_claims(text: str) -> list[str]:
