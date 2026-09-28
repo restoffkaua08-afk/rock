@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from rock.config.settings import get_settings
-from rock.core.contracts import Capability, Skill
+from rock.core.contracts import Skill
 
 
 class SkillRegistry:
