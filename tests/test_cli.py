@@ -48,3 +48,19 @@ def test_doctor_check_uses_provider_health(monkeypatch) -> None:
     result = runner.invoke(app, ["doctor", "--check"])
     assert result.exit_code == 0, result.output
     assert "OpenAI: reachable" in result.output
+
+
+def test_council_models_can_be_selected(monkeypatch) -> None:
+    monkeypatch.setenv("ROCK_MODE", "mock")
+    monkeypatch.setenv("ROCK_COUNCIL_MODELS", "openai,gemini")
+
+    from rock.config.settings import get_settings
+
+    get_settings.cache_clear()
+    try:
+        from rock.cli.main import build_engine
+
+        _, selected = build_engine()
+        assert selected == ["openai:default", "gemini:default"]
+    finally:
+        get_settings.cache_clear()
