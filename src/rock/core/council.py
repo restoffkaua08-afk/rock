@@ -141,6 +141,7 @@ class CouncilEngine:
         model_ids: list[str],
         *,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> list[Response]:
         semaphore = asyncio.Semaphore(max(1, task.policy.budget.max_parallel))
         cost_budget = cost_budget or CostBudget(task.policy.budget.max_cost)
