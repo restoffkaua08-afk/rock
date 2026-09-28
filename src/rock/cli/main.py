@@ -266,6 +266,7 @@ def doctor(
     ),
 ) -> None:
     """Check local configuration; use --check for live provider connectivity."""
+    get_settings.cache_clear()
     settings = get_settings()
     console.print(Panel.fit("ROCK DOCTOR"))
     console.print("✓ Python runtime detected")
