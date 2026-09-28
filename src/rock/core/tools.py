@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from rock.core.contracts import Execution, ExecutionStatus, Tool
+from rock.core.contracts import Execution, ExecutionStatus, PermissionDecision, Tool
 from rock.core.policy import PolicyEngine
 
 
@@ -60,7 +60,7 @@ class ToolExecutionEngine:
             return self._deny(execution, "maximum tool calls exceeded")
 
         decision = self.policy.decide(tool, call.action, interactive=interactive)
-        if decision != "allow":
+        if decision != PermissionDecision.ALLOW:
             return self._deny(execution, f"permission decision: {decision}")
 
         handler = self.handlers.get(tool.id)
