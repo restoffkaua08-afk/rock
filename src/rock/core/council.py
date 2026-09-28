@@ -4,7 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 
-from rock.core.contracts import Model, Response, Task, Verification
+from rock.core.contracts import CouncilProtocol, Model, Response, Task, Verification
 from rock.core.providers import Provider, ProviderError
 
 
@@ -321,7 +321,37 @@ class CouncilEngine:
             for model_id in model_ids
             if self.models[model_id].provider in usable_providers
         )
+        protocol_name = str(task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)).lower()
+        try:
+            protocol = CouncilProtocol(protocol_name)
+        except ValueError:
+            protocol = CouncilProtocol.PARALLEL
+
+        rounds = max(1, min(task.policy.budget.max_rounds, 5))
         critique = await self.critique(task, usable, control_model, event_sink=event_sink)
+        if protocol == CouncilProtocol.CRITIQUE_SYNTHESIS and rounds > 1:
+            for round_number in range(2, rounds + 1):
+                self._emit(
+                    event_sink,
+                    "stage",
+                    "Critic",
+                    "running",
+                    f"rodada {round_number}/{rounds}",
+                )
+                prior = critique.content if critique.content else critique.error or ""
+                augmented = usable + [
+                    Response(
+                        provider="rock",
+                        model="critic",
+                        content=f"Previous critique:\n{prior}",
+                    )
+                ]
+                critique = await self.critique(
+                    task,
+                    augmented,
+                    control_model,
+                    event_sink=event_sink,
+                )
         synthesis = await self.synthesize(
             task,
             usable,
