@@ -135,6 +135,32 @@ class RedTeamProtocol(CouncilProtocolRunner):
         return result
 
 
+class VoteProtocol(CouncilProtocolRunner):
+    protocol = CouncilProtocol.VOTE
+
+    async def critique_rounds(self, engine, context, critic_model, rounds, *, event_sink=None):
+        candidates = "\n\n".join(
+            f"Candidate {index}: [{response.provider}/{response.model}]\n{response.content}"
+            for index, response in enumerate(context.responses, 1)
+        )
+        prompt = (
+            "You are Rock's voting judge. Compare the candidate answers independently. "
+            "Score each candidate on correctness, relevance, evidence quality and "
+            "coverage from 0 to 10. Do not use popularity as proof. Return a compact "
+            "ranking with reasons, confidence, unresolved disagreements, and a "
+            "recommended candidate for synthesis. The recommendation is a selection "
+            "signal, not a claim that the selected answer is objectively true.\n\n"
+            f"Task:\n{context.task.prompt}\n\n{candidates}"
+        )
+        return await engine.debate_turn(
+            context.task,
+            critic_model,
+            prompt,
+            event_sink=event_sink,
+            event_name="Vote",
+        )
+
+
 class CritiqueSynthesisProtocol(CouncilProtocolRunner):
     protocol = CouncilProtocol.CRITIQUE_SYNTHESIS
 
@@ -166,4 +192,5 @@ def get_protocol(protocol: CouncilProtocol) -> CouncilProtocolRunner:
         CouncilProtocol.CRITIQUE_SYNTHESIS: CritiqueSynthesisProtocol(),
         CouncilProtocol.DEBATE: DebateProtocol(),
         CouncilProtocol.RED_TEAM: RedTeamProtocol(),
+        CouncilProtocol.VOTE: VoteProtocol(),
     }[protocol]
