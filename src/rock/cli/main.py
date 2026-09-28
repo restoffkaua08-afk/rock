@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rock.agents.cli_agents import ExternalAgentRunner
 from rock.cli.terminal_ui import RockTerminalUI, interactive_prompt
 from rock.config.settings import get_settings
-from rock.core.contracts import Model, Policy, Session, Task, TaskMode
+from rock.core.contracts import Model, Policy, Provider, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
 from rock.core.skills import SkillRegistry, default_skill_roots
 from rock.observability.logging import configure_logging
@@ -33,7 +33,7 @@ def build_engine() -> tuple[CouncilEngine, list[str]]:
         ("gemini", settings.rock_gemini_model, settings.gemini_api_key),
         ("ollama", settings.rock_ollama_model, True),
     ]
-    providers: dict[str, object] = {}
+    providers: dict[str, Provider] = {}
     models: dict[str, Model] = {}
     selected: list[str] = []
 
@@ -64,7 +64,10 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
         policy=Policy(
             timeout_seconds=settings.rock_timeout_seconds,
             max_retries=settings.rock_max_retries,
-            budget={"max_parallel": settings.rock_max_parallel},
+            budget={
+                "max_parallel": settings.rock_max_parallel,
+                "max_cost": settings.rock_max_cost,
+            },
         ),
     )
 
