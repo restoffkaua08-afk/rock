@@ -94,3 +94,40 @@ async def test_council_does_not_retry_authentication_failure() -> None:
 
     assert provider.calls == 1
     assert responses[0].error == "authentication: invalid API key"
+
+
+class CostProvider(Provider):
+    def __init__(self, cost: float) -> None:
+        self.cost = cost
+        self.calls = 0
+
+    async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
+        self.calls += 1
+        return Response(
+            provider=model.provider,
+            model=model.model_name,
+            content="answer",
+            estimated_cost=self.cost,
+        )
+
+
+@pytest.mark.asyncio
+async def test_council_stops_new_calls_after_cost_budget_is_reached() -> None:
+    provider = CostProvider(0.60)
+    engine = CouncilEngine(
+        {"cost": provider},
+        {"cost:default": Model(id="cost:default", provider="cost", model_name="mock-cost")},
+    )
+
+    responses = await engine.collect(
+        Task(
+            id="t-cost",
+            prompt="hello",
+            policy={"budget": {"max_cost": 0.50, "max_parallel": 1}},
+        ),
+        ["cost:default", "cost:default"],
+    )
+
+    assert provider.calls == 1
+    assert responses[0].content == "answer"
+    assert responses[1].error == "budget_exceeded: cost limit reached"
