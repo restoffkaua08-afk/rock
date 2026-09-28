@@ -4,6 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 
+from rock.core.adjudication import AdjudicationEngine
 from rock.core.contracts import Council, CouncilProtocol, Model, Response, Task, Verification
 from rock.core.evidence import EvidenceEngine
 from rock.core.providers import Provider, ProviderError
@@ -264,7 +265,7 @@ class CouncilEngine:
             "resolve contradictions explicitly, and never claim verification that did not occur. "
             "Answer the user directly and clearly.\n\n"
             f"USER TASK:\n{task.prompt}\n\nANSWERS:\n{material}\n\n"
-            f"CRITIQUE:\n{critique.content}"
+            f"CRITIQUE:\n{critique.content}\n\nADJUDICATIONS:\n{adjudications}"
         )
         return await self._call(
             provider,
@@ -340,6 +341,23 @@ class CouncilEngine:
         usable = self.normalize(responses)
         evidence = EvidenceEngine.collect(usable)
         conflicts = EvidenceEngine.detect_conflicts(usable)
+        adjudications = []
+        if conflicts:
+            adjudicator = AdjudicationEngine()
+            for conflict in conflicts:
+                result = await adjudicator.adjudicate(
+                    self,
+                    task,
+                    conflict,
+                    next(
+                        model_id
+                        for model_id in model_ids
+                        if self.models[model_id].provider in {r.provider for r in usable}
+                    ),
+                    event_sink=event_sink,
+                )
+                adjudications.append(result)
+                conflict.resolved = result.status.value == "resolved"
         self._emit(
             event_sink,
             "stage",
