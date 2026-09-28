@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from rock.core.contracts import Permission, PermissionDecision
 
@@ -8,8 +9,8 @@ from rock.core.contracts import Permission, PermissionDecision
 class PermissionEngine:
     """Central policy gate for all future tool/agent side effects."""
 
-    SAFE_READ_ACTIONS = {"read", "list", "inspect", "status"}
-    WRITE_ACTIONS = {"write", "edit", "delete", "execute", "network"}
+    SAFE_READ_ACTIONS: ClassVar[set[str]] = {"read", "list", "inspect", "status"}
+    WRITE_ACTIONS: ClassVar[set[str]] = {"write", "edit", "delete", "execute", "network"}
 
     def decide(self, permission: Permission, *, interactive: bool = False) -> PermissionDecision:
         if permission.decision == PermissionDecision.DENY:
