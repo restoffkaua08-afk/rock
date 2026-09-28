@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     rock_council_models: str | None = None
     rock_council_protocol: str = "parallel"
     rock_council_rounds: int = 1
+    rock_council_critic_model: str | None = None
+    rock_council_synthesizer_model: str | None = None
+    rock_council_verifier_model: str | None = None
 
     rock_openai_model: str = "openai/gpt-5.3"
     rock_anthropic_model: str = "anthropic/claude-sonnet-5"
