@@ -1,3 +1,4 @@
+# ruff: isort: skip_file
 from functools import lru_cache
 from pathlib import Path
 
