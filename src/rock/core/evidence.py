@@ -123,13 +123,33 @@ def _contradiction_markers(left: str, right: str) -> list[str]:
 
 
 def _extract_claims(text: str) -> list[str]:
-    """Extract coarse, sentence-level claims without pretending to prove them."""
-    statements = []
-    for part in text.replace("\n", " ").split("."):
-        statement = part.strip()
-        if len(statement) >= 12:
-            statements.append(statement + ".")
-    return statements or [text.strip()]
+    """Extract conservative claim-sized statements while preserving list structure."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    statements: list[str] = []
+
+    for line in normalized.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+
+        # Markdown/list prefixes are presentation, not part of the claim.
+        while line.startswith(("- ", "* ", "+ ")):
+            line = line[2:].strip()
+        if line and line[:2].isdigit() and line[2:3] in {".", ")"}:
+            line = line[3:].strip()
+
+        # Split ordinary prose into sentences, but keep abbreviations/decimal-like
+        # fragments conservative by requiring a meaningful trailing sentence.
+        parts = re.split(r"(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ0-9])", line)
+        for part in parts:
+            statement = part.strip()
+            if len(statement) < 12:
+                continue
+            if statement[-1] not in ".!?":
+                statement += "."
+            statements.append(statement)
+
+    return statements or [normalized.strip()]
 
 
 def _response_claims(response: Response, response_index: int) -> dict[str, str]:
