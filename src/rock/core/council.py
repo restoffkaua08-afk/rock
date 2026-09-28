@@ -171,6 +171,15 @@ class CouncilEngine:
 
         return await asyncio.gather(*(limited(model_id) for model_id in model_ids))
 
+    @staticmethod
+    def _healthy_model_ids(responses: list[Response], models: dict[str, Model]) -> list[str]:
+        healthy_providers = {response.provider for response in responses if not response.error and response.content.strip()}
+        return [
+            model_id
+            for model_id, model in models.items()
+            if model.provider in healthy_providers
+        ]
+
     def _resolve_role_model(
         self,
         requested: str | None,
@@ -183,7 +192,11 @@ class CouncilEngine:
                 model = self.models[model_id]
                 if normalized in {model_id.lower(), model.provider.lower(), model.model_name.lower()}:
                     return model_id
-        return fallback
+        if fallback in available_model_ids:
+            return fallback
+        if available_model_ids:
+            return available_model_ids[0]
+        raise ValueError("no healthy model available for council control role")
 
     @staticmethod
     def normalize(responses: list[Response]) -> list[Response]:
@@ -345,6 +358,10 @@ class CouncilEngine:
         self._emit(event_sink, "stage", "Models", "success", "respostas recebidas")
 
         usable = self.normalize(responses)
+        usable_model_ids = self._healthy_model_ids(usable, self.models)
+        if not usable_model_ids:
+            raise RuntimeError("council has no healthy control model")
+        control_model = usable_model_ids[0]
         evidence = EvidenceEngine.collect(usable)
         conflicts = EvidenceEngine.detect_conflicts(usable)
         adjudications = []
