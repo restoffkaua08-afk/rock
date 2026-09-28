@@ -58,7 +58,8 @@ class EvidenceEngine:
                 for left_id, left_claim in left_claims.items():
                     for right_id, right_claim in right_claims.items():
                         overlap = _key_terms(left_claim) & _key_terms(right_claim)
-                        if not overlap:
+                        similarity = _claim_similarity(left_claim, right_claim)
+                        if not overlap or similarity < 0.35:
                             continue
                         markers = _contradiction_markers(left_claim, right_claim)
                         if markers:
@@ -96,6 +97,7 @@ class EvidenceEngine:
                             "overlap_terms": sorted(overlaps),
                             "markers": unique_markers,
                             "pair_count": len(conflicting_pairs),
+                            "similarity_threshold": 0.35,
                         },
                     )
                 )
@@ -107,10 +109,28 @@ def _key_terms(text: str) -> set[str]:
     return {word for word in words if len(word) >= 5}
 
 
+def _claim_similarity(left: str, right: str) -> float:
+    left_terms = _semantic_terms(left)
+    right_terms = _semantic_terms(right)
+    if not left_terms or not right_terms:
+        return 0.0
+    return len(left_terms & right_terms) / len(left_terms | right_terms)
+
+
+def _semantic_terms(text: str) -> set[str]:
+    stopwords = {
+        "about", "after", "also", "because", "being", "could", "from",
+        "have", "into", "more", "most", "only", "should", "that", "their",
+        "there", "these", "this", "those", "under", "using", "with", "would",
+        "feature", "system", "the", "and", "for", "are", "was",
+    }
+    return {term for term in _key_terms(text) if term not in stopwords}
+
+
 def _claim_polarity(text: str) -> str | None:
     lowered = text.lower()
-    positive = re.search(r"\\b(required|mandatory|always|true|yes|supports)\\b", lowered)
-    negative = re.search(r"\\b(optional|never|false|no|unsupported|does not support)\\b", lowered)
+    positive = re.search(r"\b(required|mandatory|always|true|yes|supports)\b", lowered)
+    negative = re.search(r"\b(optional|never|false|no|unsupported|does not support)\b", lowered)
     if positive and negative:
         return "mixed"
     if positive:
