@@ -10,8 +10,9 @@ from rich.panel import Panel
 from rock.agents.cli_agents import ExternalAgentRunner
 from rock.cli.terminal_ui import RockTerminalUI, interactive_prompt
 from rock.config.settings import get_settings
-from rock.core.contracts import Model, Policy, Provider, Session, Task, TaskMode
+from rock.core.contracts import Model, Policy, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
+from rock.core.providers import Provider
 from rock.core.skills import SkillRegistry, default_skill_roots
 from rock.observability.logging import configure_logging
 from rock.providers.litellm_provider import LiteLLMProvider
