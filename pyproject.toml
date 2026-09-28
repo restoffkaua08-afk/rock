@@ -39,3 +39,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
+# Typer intentionally uses factory calls such as typer.Argument/Option in function defaults.
+ignore = ["B008"]
