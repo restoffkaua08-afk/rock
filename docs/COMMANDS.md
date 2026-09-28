@@ -44,4 +44,11 @@ rock sessions
 ## Council
 Task → modelos em paralelo → normalização → crítica → síntese → verificação → persistência.
 
+### Selecionar modelos
+Por padrão, o Rock usa todos os providers configurados. Para limitar o Council, defina no `.env`:
+```text
+ROCK_COUNCIL_MODELS=openai,anthropic,gemini
+```
+Os nomes aceitos são `openai`, `anthropic`, `deepseek`, `perplexity`, `gemini` e `ollama`. Os modelos individuais continuam configuráveis pelas variáveis `ROCK_<PROVIDER>_MODEL`.
+
 Falha de um provedor não derruba os demais.
