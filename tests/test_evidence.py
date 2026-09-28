@@ -150,3 +150,21 @@ def test_collect_keeps_question_and_exclamation_claim_boundaries() -> None:
         "Is feature X required?",
         "Feature Y is optional!",
     ]
+
+
+def test_collect_assigns_claim_polarity() -> None:
+    evidence = EvidenceEngine.collect(
+        [response("a", "Feature X is required. Feature Y is optional.")]
+    )
+    assert [claim.polarity for claim in evidence[0].claims] == ["positive", "negative"]
+
+
+def test_conflict_metadata_records_polarity_contradiction() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is required."),
+            response("b", "Feature X is optional."),
+        ]
+    )
+    assert len(conflicts) == 1
+    assert "polarity/positive-negative" in conflicts[0].metadata["markers"]
