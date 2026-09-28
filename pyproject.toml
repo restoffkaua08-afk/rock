@@ -41,5 +41,7 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-# Typer intentionally uses factory calls such as typer.Argument/Option in function defaults.
+# Keep CI focused on correctness plus import hygiene. Typer intentionally uses
+# factory calls such as typer.Argument/Option in function defaults.
+select = ["E4", "E7", "E9", "F", "I"]
 ignore = ["B008"]
