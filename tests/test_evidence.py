@@ -1,5 +1,5 @@
-from rock.core.contracts import AdjudicationStatus, Conflict, Response
 from rock.core.adjudication import AdjudicationEngine
+from rock.core.contracts import AdjudicationStatus, Conflict, Response
 from rock.core.evidence import EvidenceEngine
 
 

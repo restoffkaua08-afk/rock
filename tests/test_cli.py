@@ -2,7 +2,6 @@ from typer.testing import CliRunner
 
 from rock.cli.main import app
 
-
 runner = CliRunner()
 
 

@@ -75,8 +75,8 @@ async def test_council_roles_can_use_different_models() -> None:
 
 @pytest.mark.asyncio
 async def test_verification_loop_can_correct_synthesis() -> None:
-    from rock.core.providers import Provider
     from rock.core.contracts import Model, Response, Task
+    from rock.core.providers import Provider
 
     class OneTimeReview(Provider):
         def __init__(self):

@@ -7,11 +7,11 @@ from collections.abc import Callable
 from rock.core.adjudication import AdjudicationEngine
 from rock.core.contracts import Council, CouncilProtocol, Model, Response, Task, Verification
 from rock.core.evidence import EvidenceEngine
-from rock.core.providers import Provider, ProviderError
 from rock.core.protocols import ProtocolContext, get_protocol
-
+from rock.core.providers import Provider, ProviderError
 
 EventSink = Callable[[str, str, str, str, str | None], None]
+
 
 class CostBudget:
     def __init__(self, limit: float | None) -> None:
@@ -29,13 +29,19 @@ class CostBudget:
         async with self._lock:
             self.total += amount
 
+    async def reserve(self, amount: float | None) -> bool:
+        """Record observed spend atomically and report whether the budget remains."""
+        if amount is None or amount < 0:
+            return True
+        async with self._lock:
+            self.total += amount
+            return self.limit is None or self.total <= self.limit
 
 
 class CouncilEngine:
     def __init__(self, providers: dict[str, Provider], models: dict[str, Model]) -> None:
         self.providers = providers
         self.models = models
-        self._cost_budget: CostBudget | None = None
 
     @staticmethod
     def _emit(
@@ -78,8 +84,8 @@ class CouncilEngine:
                 if response.error:
                     last = response
                 else:
-                    if cost_budget is not None:
-                        await cost_budget.record(response.estimated_cost)
+                    if cost_budget is not None and response.estimated_cost is not None:
+                        await cost_budget.reserve(response.estimated_cost)
                     self._emit(event_sink, event_kind, name, "success", "concluído")
                     return response
             except TimeoutError:
@@ -103,7 +109,7 @@ class CouncilEngine:
                     provider=model.provider,
                     model=model.model_name,
                     content="",
-                    error=f"unavailable: {exc}",
+                    error=str(exc).strip() or exc.__class__.__name__,
                 )
 
             retryable = last is not None and not last.error.startswith(
@@ -121,7 +127,7 @@ class CouncilEngine:
                 )
                 await asyncio.sleep(min(2**attempt, 4))
 
-        failure_status = "timeout" if last and last.error == "timeout" else "failed"
+        failure_status = "timeout" if last and last.error and last.error.startswith("timeout:") else "failed"
         self._emit(
             event_sink,
             event_kind,
@@ -143,10 +149,10 @@ class CouncilEngine:
         model_ids: list[str],
         *,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> list[Response]:
         semaphore = asyncio.Semaphore(max(1, task.policy.budget.max_parallel))
-        cost_budget = CostBudget(task.policy.budget.max_cost)
-        self._cost_budget = cost_budget
+        cost_budget = cost_budget or CostBudget(task.policy.budget.max_cost)
 
         async def one(model_id: str) -> Response:
             model = self.models[model_id]
@@ -167,6 +173,14 @@ class CouncilEngine:
 
         async def limited(model_id: str) -> Response:
             async with semaphore:
+                if cost_budget is not None and not await cost_budget.can_spend():
+                    model = self.models[model_id]
+                    return Response(
+                        provider=model.provider,
+                        model=model.model_name,
+                        content="",
+                        error="budget_exceeded: cost limit reached",
+                    )
                 return await one(model_id)
 
         return await asyncio.gather(*(limited(model_id) for model_id in model_ids))
@@ -211,6 +225,7 @@ class CouncilEngine:
         evidence=None,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         if not responses:
             return Response(
@@ -237,7 +252,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Critic",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def debate_turn(
@@ -248,6 +263,7 @@ class CouncilEngine:
         *,
         event_sink: EventSink | None = None,
         event_name: str = "Debate",
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -259,7 +275,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name=event_name,
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def synthesize(
@@ -271,6 +287,7 @@ class CouncilEngine:
         *,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -295,7 +312,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Synthesizer",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def verify(
@@ -308,6 +325,7 @@ class CouncilEngine:
         evidence=None,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Verification:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -334,7 +352,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Verifier",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
         text = result.content.strip()
         passed = bool(text) and text.upper().startswith("PASS")
@@ -349,7 +367,7 @@ class CouncilEngine:
         return Verification(
             target="synthesis",
             claim_ids=[claim.id for item in (evidence or []) for claim in item.claims],
-            adjudication_ids=[item.conflict_id for item in (adjudications or [])],
+            adjudication_ids=[f"adjudication:{item.conflict_id}" for item in (adjudications or [])],
             verifier=f"{model.provider}/{model.model_name}",
             checks=["model_cross_check", "claim_consistency", "adjudication_consistency", "source_consistency", "non_empty_synthesis"],
             passed=passed,
@@ -364,8 +382,9 @@ class CouncilEngine:
         *,
         event_sink: EventSink | None = None,
     ) -> tuple[str, Verification, list[Response]]:
+        cost_budget = CostBudget(task.policy.budget.max_cost)
         self._emit(event_sink, "stage", "Models", "running", "consultando em paralelo")
-        responses = await self.collect(task, model_ids, event_sink=event_sink)
+        responses = await self.collect(task, model_ids, event_sink=event_sink, cost_budget=cost_budget)
         self._emit(event_sink, "stage", "Models", "success", "respostas recebidas")
 
         usable = self.normalize(responses)
@@ -383,6 +402,7 @@ class CouncilEngine:
                     conflict,
                     control_model,
                     event_sink=event_sink,
+                    cost_budget=cost_budget,
                 )
                 adjudications.append(result)
                 conflict.resolved = result.status.value == "resolved"
@@ -424,9 +444,6 @@ class CouncilEngine:
                 responses,
             )
 
-        if not usable_model_ids:
-            raise RuntimeError("council has no healthy control model")
-        control_model = usable_model_ids[0]
         protocol_name = str(
             task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)
         ).lower()
@@ -469,7 +486,7 @@ class CouncilEngine:
         protocol_runner = get_protocol(protocol)
         protocol_result = await protocol_runner.critique_rounds(
             self,
-            ProtocolContext(task=task, responses=usable),
+            ProtocolContext(task=task, responses=usable, cost_budget=cost_budget),
             (
                 red_team_model
                 if protocol == CouncilProtocol.RED_TEAM
@@ -497,8 +514,14 @@ class CouncilEngine:
             synthesizer_model,
             adjudications=adjudications,
             event_sink=event_sink,
+            cost_budget=cost_budget,
         )
         if synthesis.error:
+            reason = (
+                "task budget was exhausted"
+                if synthesis.error.startswith("budget_exceeded:")
+                else "synthesis provider failed"
+            )
             verification = Verification(
                 target="synthesis",
                 verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
@@ -508,7 +531,7 @@ class CouncilEngine:
                 confidence=0.0,
             )
             return (
-                "Rock stopped before synthesis because the task budget was exhausted.",
+                f"Rock stopped before synthesis because the {reason}.",
                 verification,
                 responses,
             )
@@ -520,6 +543,7 @@ class CouncilEngine:
             evidence=evidence,
             adjudications=adjudications,
             event_sink=event_sink,
+            cost_budget=cost_budget,
         )
         if verification.passed or not task.policy.require_verification:
             return synthesis.content, verification, responses
@@ -550,10 +574,16 @@ class CouncilEngine:
                 synthesizer_model,
                 adjudications=adjudications,
                 event_sink=event_sink,
+                cost_budget=cost_budget,
             )
             if synthesis.error:
+                reason = (
+                    "task budget was exhausted"
+                    if synthesis.error.startswith("budget_exceeded:")
+                    else "synthesis provider failed"
+                )
                 return (
-                    "Rock stopped during verification correction because the task budget was exhausted.",
+                    f"Rock stopped during verification correction because the {reason}.",
                     Verification(
                         target="synthesis",
                         verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
@@ -572,6 +602,7 @@ class CouncilEngine:
                 evidence=evidence,
                 adjudications=adjudications,
                 event_sink=event_sink,
+                cost_budget=cost_budget,
             )
             if verification.passed:
                 self._emit(

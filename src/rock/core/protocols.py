@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, Any
 from rock.core.contracts import CouncilProtocol, ProtocolResult, Response
 
 if TYPE_CHECKING:
-    from rock.core.council import CouncilEngine
     from rock.core.contracts import Task
+    from rock.core.council import CouncilEngine
 
 @dataclass(frozen=True)
 class ProtocolContext:
     task: Task
     responses: list[Response]
+    cost_budget: Any
 
 class CouncilProtocolRunner(ABC):
     protocol: CouncilProtocol
@@ -35,7 +36,7 @@ class ParallelProtocol(CouncilProtocolRunner):
 
     async def critique_rounds(self, engine, context, critic_model, rounds, *, event_sink=None):
         response = await engine.critique(
-            context.task, context.responses, critic_model, event_sink=event_sink
+            context.task, context.responses, critic_model, event_sink=event_sink, cost_budget=context.cost_budget
         )
         return ProtocolResult(protocol=self.protocol, response=response, evidence=response.evidence)
 
@@ -72,6 +73,7 @@ class DebateProtocol(CouncilProtocolRunner):
                     model_id,
                     prompt,
                     event_sink=event_sink,
+                    cost_budget=context.cost_budget,
                 )
                 if result.content.strip():
                     transcript.append(
@@ -95,6 +97,7 @@ class DebateProtocol(CouncilProtocolRunner):
             judge_prompt,
             event_sink=event_sink,
             event_name="Judge",
+            cost_budget=context.cost_budget,
         )
         return ProtocolResult(
             protocol=self.protocol,
@@ -125,6 +128,7 @@ class RedTeamProtocol(CouncilProtocolRunner):
             prompt,
             event_sink=event_sink,
             event_name="Red Team",
+            cost_budget=context.cost_budget,
         )
         for round_number in range(2, max(1, rounds) + 1):
             follow_up = (
@@ -138,6 +142,7 @@ class RedTeamProtocol(CouncilProtocolRunner):
                 follow_up,
                 event_sink=event_sink,
                 event_name="Red Team",
+                cost_budget=context.cost_budget,
             )
         return ProtocolResult(
             protocol=self.protocol,
@@ -170,6 +175,7 @@ class VoteProtocol(CouncilProtocolRunner):
             prompt,
             event_sink=event_sink,
             event_name="Vote",
+            cost_budget=context.cost_budget,
         )
         return ProtocolResult(
             protocol=self.protocol,

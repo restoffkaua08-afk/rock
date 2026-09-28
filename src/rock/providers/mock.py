@@ -16,7 +16,7 @@ class MockProvider(Provider):
         elif "critical reviewer" in prompt.lower():
             content = "Mock critique: responses are available and internally consistent."
         elif "synthesis agent" in prompt.lower():
-            content = f"Mock synthesis from {self.name}. The supplied responses were considered."
+            content = f"Mock synthesis from {self.name}. The supplied responses were considered. Mock response material was incorporated."
         else:
             content = f"Mock response from {self.name}. Received task: {prompt}"
 
