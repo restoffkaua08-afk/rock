@@ -102,7 +102,7 @@ class CouncilEngine:
                     provider=model.provider,
                     model=model.model_name,
                     content="",
-                    error=f"unavailable: {exc}",
+                    error=str(exc).strip() or exc.__class__.__name__,
                 )
 
             retryable = last is not None and not last.error.startswith(
