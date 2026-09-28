@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class ProtocolContext:
     task: Task
     responses: list[Response]
+    cost_budget: Any
 
 class CouncilProtocolRunner(ABC):
     protocol: CouncilProtocol
