@@ -78,6 +78,7 @@ class DebateProtocol(CouncilProtocolRunner):
                         f"{result.content}"
                     )
 
+        transcript_text = "\n\n".join(transcript)
         judge_prompt = (
             "You are Rock's debate judge. Evaluate the debate transcript for "
             "contradictions, evidence quality, unsupported claims and unresolved "
@@ -85,7 +86,7 @@ class DebateProtocol(CouncilProtocolRunner):
             "Do not declare something true merely because multiple participants "
             "agree.\n\n"
             f"Task:\n{context.task.prompt}\n\n"
-            f"Debate transcript:\n{'\n\n'.join(transcript)}"
+            f"Debate transcript:\n{transcript_text}"
         )
         return await engine.debate_turn(
             context.task,
