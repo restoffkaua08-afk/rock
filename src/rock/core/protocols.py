@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from rock.core.contracts import CouncilProtocol, Response
+from rock.core.contracts import CouncilProtocol, ProtocolResult, Response
 
 if TYPE_CHECKING:
     from rock.core.council import CouncilEngine
@@ -27,16 +27,17 @@ class CouncilProtocolRunner(ABC):
         rounds: int,
         *,
         event_sink: Any = None,
-    ) -> Response:
+    ) -> ProtocolResult:
         raise NotImplementedError
 
 class ParallelProtocol(CouncilProtocolRunner):
     protocol = CouncilProtocol.PARALLEL
 
     async def critique_rounds(self, engine, context, critic_model, rounds, *, event_sink=None):
-        return await engine.critique(
+        response = await engine.critique(
             context.task, context.responses, critic_model, event_sink=event_sink
         )
+        return ProtocolResult(protocol=self.protocol, response=response, evidence=response.evidence)
 
 class DebateProtocol(CouncilProtocolRunner):
     protocol = CouncilProtocol.DEBATE
@@ -88,12 +89,18 @@ class DebateProtocol(CouncilProtocolRunner):
             f"Task:\n{context.task.prompt}\n\n"
             f"Debate transcript:\n{transcript_text}"
         )
-        return await engine.debate_turn(
+        response = await engine.debate_turn(
             context.task,
             critic_model,
             judge_prompt,
             event_sink=event_sink,
             event_name="Judge",
+        )
+        return ProtocolResult(
+            protocol=self.protocol,
+            response=response,
+            evidence=response.evidence,
+            metadata={"transcript": transcript_text, "rounds": rounds},
         )
 
 
@@ -132,7 +139,12 @@ class RedTeamProtocol(CouncilProtocolRunner):
                 event_sink=event_sink,
                 event_name="Red Team",
             )
-        return result
+        return ProtocolResult(
+            protocol=self.protocol,
+            response=result,
+            evidence=result.evidence,
+            metadata={"rounds": rounds},
+        )
 
 
 class VoteProtocol(CouncilProtocolRunner):
@@ -152,12 +164,18 @@ class VoteProtocol(CouncilProtocolRunner):
             "signal, not a claim that the selected answer is objectively true.\n\n"
             f"Task:\n{context.task.prompt}\n\n{candidates}"
         )
-        return await engine.debate_turn(
+        response = await engine.debate_turn(
             context.task,
             critic_model,
             prompt,
             event_sink=event_sink,
             event_name="Vote",
+        )
+        return ProtocolResult(
+            protocol=self.protocol,
+            response=response,
+            evidence=response.evidence,
+            metadata={"candidate_count": len(context.responses)},
         )
 
 
