@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     rock_council_verifier_model: str | None = None
     rock_council_judge_model: str | None = None
     rock_council_red_team_model: str | None = None
+    rock_council_voter_model: str | None = None
 
     rock_openai_model: str = "openai/gpt-5.3"
     rock_anthropic_model: str = "anthropic/claude-sonnet-5"
