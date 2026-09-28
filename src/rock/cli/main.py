@@ -81,6 +81,9 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
         ),
         metadata={
             "council_protocol": settings.rock_council_protocol,
+            "council_critic_model": settings.rock_council_critic_model,
+            "council_synthesizer_model": settings.rock_council_synthesizer_model,
+            "council_verifier_model": settings.rock_council_verifier_model,
         },
     )
 
