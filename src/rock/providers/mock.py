@@ -7,7 +7,9 @@ class MockProvider(Provider):
         self.name = name
 
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
-        if "verification agent" in prompt.lower():
+        if "debate judge" in prompt.lower():
+            content = "Mock judge: the debate findings are internally consistent."
+        elif "verification agent" in prompt.lower():
             content = "PASS\nMock verification: synthesis is consistent with the supplied responses."
         elif "critical reviewer" in prompt.lower():
             content = "Mock critique: responses are available and internally consistent."
