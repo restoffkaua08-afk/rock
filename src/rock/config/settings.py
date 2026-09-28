@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     rock_mode: str = "mock"
     rock_db_path: str = ".rock/sessions.db"
     rock_max_retries: int = 2
-    rock_timeout_seconds: float = 60
+    rock_timeout_seconds: float = 120
     rock_max_parallel: int = 5
     rock_max_cost: float | None = None
     rock_council_models: str | None = None
