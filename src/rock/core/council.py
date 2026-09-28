@@ -28,23 +28,7 @@ class CostBudget:
             return
         async with self._lock:
             self.total += amount
-EventSink = Callable[[str, str, str, str, str | None], None]
 
-class CostBudget:
-    def __init__(self, limit: float | None) -> None:
-        self.limit = limit
-        self.total = 0.0
-        self._lock = asyncio.Lock()
-
-    async def can_spend(self) -> bool:
-        async with self._lock:
-            return self.limit is None or self.total < self.limit
-
-    async def record(self, amount: float | None) -> None:
-        if amount is None or amount < 0:
-            return
-        async with self._lock:
-            self.total += amount
 
 
 
