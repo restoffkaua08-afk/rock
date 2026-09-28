@@ -177,6 +177,14 @@ class CouncilEngine:
 
         async def limited(model_id: str) -> Response:
             async with semaphore:
+                if cost_budget is not None and not await cost_budget.can_spend():
+                    model = self.models[model_id]
+                    return Response(
+                        provider=model.provider,
+                        model=model.model_name,
+                        content="",
+                        error="budget_exceeded: cost limit reached",
+                    )
                 return await one(model_id)
 
         return await asyncio.gather(*(limited(model_id) for model_id in model_ids))
