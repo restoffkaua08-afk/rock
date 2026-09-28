@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from rock.config.settings import get_settings
+
 from rock.core.contracts import Skill
 
 
@@ -38,7 +40,7 @@ class SkillRegistry:
 
 def default_skill_roots() -> list[Path]:
     roots = [Path(__file__).resolve().parents[2] / "skills"]
-    configured = os.getenv("ROCK_SUPERPOWERS_PATH")
+    configured = get_settings().rock_superpowers_path or os.getenv("ROCK_SUPERPOWERS_PATH")
     if configured:
         roots.append(Path(configured).expanduser())
     return roots
