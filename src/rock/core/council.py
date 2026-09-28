@@ -29,6 +29,16 @@ class CostBudget:
         async with self._lock:
             self.total += amount
 
+    async def reserve(self, amount: float | None) -> bool:
+        """Reserve a known cost atomically before starting a request."""
+        if amount is None or amount < 0:
+            return True
+        async with self._lock:
+            if self.limit is not None and self.total + amount > self.limit:
+                return False
+            self.total += amount
+            return True
+
 
 class CouncilEngine:
     def __init__(self, providers: dict[str, Provider], models: dict[str, Model]) -> None:
