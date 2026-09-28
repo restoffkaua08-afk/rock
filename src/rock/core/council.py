@@ -273,7 +273,12 @@ class CouncilEngine:
                 responses,
             )
 
-        control_model = model_ids[0]
+        usable_providers = {response.provider for response in usable}
+        control_model = next(
+            model_id
+            for model_id in model_ids
+            if self.models[model_id].provider in usable_providers
+        )
         critique = await self.critique(task, usable, control_model, event_sink=event_sink)
         synthesis = await self.synthesize(
             task,
