@@ -32,3 +32,26 @@ def test_detect_conflicts_does_not_flag_unrelated_answers() -> None:
         [response("a", "Python is useful for automation."), response("b", "Rust is useful for systems.")]
     )
     assert conflicts == []
+
+
+
+def test_adjudication_parse_keeps_inconclusive_status() -> None:
+    from rock.core.adjudication import AdjudicationEngine
+    from rock.core.contracts import AdjudicationStatus, Conflict
+
+    conflict = Conflict(
+        id="c1",
+        topic="feature",
+        claims=["Feature is required.", "Feature is optional."],
+        sources=["a/mock", "b/mock"],
+    )
+    result = AdjudicationEngine.parse(
+        conflict,
+        Response(
+            provider="judge",
+            model="mock",
+            content="INCONCLUSIVE\nThe supplied claims do not establish which condition is correct.\nConfidence: 0.4",
+        ),
+    )
+    assert result.status is AdjudicationStatus.INCONCLUSIVE
+    assert result.confidence == 0.4
