@@ -5,6 +5,7 @@ import time
 from collections.abc import Callable
 
 from rock.core.contracts import Council, CouncilProtocol, Model, Response, Task, Verification
+from rock.core.evidence import EvidenceEngine
 from rock.core.providers import Provider, ProviderError
 from rock.core.protocols import ProtocolContext, get_protocol
 
@@ -337,6 +338,15 @@ class CouncilEngine:
         self._emit(event_sink, "stage", "Models", "success", "respostas recebidas")
 
         usable = self.normalize(responses)
+        evidence = EvidenceEngine.collect(usable)
+        conflicts = EvidenceEngine.detect_conflicts(usable)
+        self._emit(
+            event_sink,
+            "stage",
+            "Evidence",
+            "success",
+            f"{len(evidence)} evidência(s), {len(conflicts)} conflito(s) potencial(is)",
+        )
         if not usable:
             verification = Verification(
                 target="synthesis",
@@ -419,7 +429,7 @@ class CouncilEngine:
             "stage",
             "Protocol Result",
             "success",
-            f"{protocol_result.protocol.value}: {len(protocol_result.evidence)} evidência(s)",
+            f"{protocol_result.protocol.value}: {len(protocol_result.evidence)} evidência(s), {len(conflicts)} conflito(s)",
         )
         synthesis = await self.synthesize(
             task,
