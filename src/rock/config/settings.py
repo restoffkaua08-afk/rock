@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     rock_timeout_seconds: float = 60
     rock_max_parallel: int = 5
     rock_max_cost: float | None = None
+    rock_council_models: str | None = None
 
     rock_openai_model: str = "openai/gpt-5.3"
     rock_anthropic_model: str = "anthropic/claude-sonnet-5"
