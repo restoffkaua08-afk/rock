@@ -88,8 +88,8 @@ class ToolExecutionEngine:
                 max_attempts=1
             ).run(
                 execution,
-                verify=lambda item: _verify_execution(item),
-                correct=lambda item, _verification, _attempt: _no_correction(item),
+                verify=self._verify_execution,
+                correct=self._no_correction,
             )
             execution.metadata = {
                 "verification_passed": verification.passed,
