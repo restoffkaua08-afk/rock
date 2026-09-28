@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from rock.core.contracts import CouncilProtocol, Model, Response, Task, Verification
 from rock.core.providers import Provider, ProviderError
+from rock.core.protocols import ProtocolContext, get_protocol
 
 
 EventSink = Callable[[str, str, str, str, str | None], None]
@@ -341,6 +342,7 @@ class CouncilEngine:
         except ValueError:
             protocol = CouncilProtocol.PARALLEL
 
+        protocol_runner = None
         rounds = max(1, min(task.policy.budget.max_rounds, 5))
         critic_model = self._resolve_role_model(
             task.metadata.get("council_critic_model"), control_model, model_ids
@@ -351,30 +353,14 @@ class CouncilEngine:
         verifier_model = self._resolve_role_model(
             task.metadata.get("council_verifier_model"), control_model, model_ids
         )
-        critique = await self.critique(task, usable, critic_model, event_sink=event_sink)
-        if protocol == CouncilProtocol.CRITIQUE_SYNTHESIS and rounds > 1:
-            for round_number in range(2, rounds + 1):
-                self._emit(
-                    event_sink,
-                    "stage",
-                    "Critic",
-                    "running",
-                    f"rodada {round_number}/{rounds}",
-                )
-                prior = critique.content if critique.content else critique.error or ""
-                augmented = usable + [
-                    Response(
-                        provider="rock",
-                        model="critic",
-                        content=f"Previous critique:\n{prior}",
-                    )
-                ]
-                critique = await self.critique(
-                    task,
-                    augmented,
-                    critic_model,
-                    event_sink=event_sink,
-                )
+        protocol_runner = get_protocol(protocol)
+        critique = await protocol_runner.critique_rounds(
+            self,
+            ProtocolContext(task=task, responses=usable),
+            critic_model,
+            rounds,
+            event_sink=event_sink,
+        )
         synthesis = await self.synthesize(
             task,
             usable,
