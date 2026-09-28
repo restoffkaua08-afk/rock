@@ -121,7 +121,7 @@ class CouncilEngine:
                 )
                 await asyncio.sleep(min(2**attempt, 4))
 
-        failure_status = "timeout" if last and last.error == "timeout" else "failed"
+        failure_status = "timeout" if last and last.error and last.error.startswith("timeout:") else "failed"
         self._emit(
             event_sink,
             event_kind,
@@ -424,9 +424,6 @@ class CouncilEngine:
                 responses,
             )
 
-        if not usable_model_ids:
-            raise RuntimeError("council has no healthy control model")
-        control_model = usable_model_ids[0]
         protocol_name = str(
             task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)
         ).lower()
