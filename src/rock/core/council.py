@@ -269,18 +269,23 @@ class CouncilEngine:
         critique: Response,
         model_id: str,
         *,
+        adjudications=None,
         event_sink: EventSink | None = None,
     ) -> Response:
         model = self.models[model_id]
         provider = self.providers[model.provider]
         material = "\n\n".join(f"[{r.provider}/{r.model}]\n{r.content}" for r in responses)
+        adjudication_material = "\n\n".join(
+            f"[{item.conflict_id}] {item.status.value}: {item.decision}"
+            for item in (adjudications or [])
+        )
         prompt = (
             "You are Rock's synthesis agent. Produce the final answer to the user's task. "
             "Use the independent answers as evidence, incorporate valid critique findings, "
             "resolve contradictions explicitly, and never claim verification that did not occur. "
             "Answer the user directly and clearly.\n\n"
             f"USER TASK:\n{task.prompt}\n\nANSWERS:\n{material}\n\n"
-            f"CRITIQUE:\n{critique.content}\n\nADJUDICATIONS:\n{adjudications}"
+            f"CRITIQUE:\n{critique.content}\n\nADJUDICATIONS:\n{adjudication_material or 'No adjudications available.'}"
         )
         return await self._call(
             provider,
@@ -316,6 +321,8 @@ class CouncilEngine:
             "adjudication must not be contradicted without explicit new evidence. Return PASS "
             "or FAIL first, then brief findings. Do not invent external evidence.\n\n"
             f"TASK:\n{task.prompt}\n\nSYNTHESIS:\n{synthesis.content}\n\n"
+            f"CLAIMS:\n{claim_material or 'No claims available.'}\n\n"
+            f"ADJUDICATIONS:\n{adjudication_material or 'No adjudications available.'}\n\n"
             "SOURCE ANSWERS:\n"
             + "\n\n".join(r.content for r in responses)
         )
@@ -487,6 +494,7 @@ class CouncilEngine:
             usable,
             critique,
             synthesizer_model,
+            adjudications=adjudications,
             event_sink=event_sink,
         )
         if synthesis.error:
