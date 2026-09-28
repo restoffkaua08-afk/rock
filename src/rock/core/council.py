@@ -359,9 +359,6 @@ class CouncilEngine:
 
         usable = self.normalize(responses)
         usable_model_ids = self._healthy_model_ids(usable, self.models)
-        if not usable_model_ids:
-            raise RuntimeError("council has no healthy control model")
-        control_model = usable_model_ids[0]
         evidence = EvidenceEngine.collect(usable)
         conflicts = EvidenceEngine.detect_conflicts(usable)
         adjudications = []
@@ -372,11 +369,7 @@ class CouncilEngine:
                     self,
                     task,
                     conflict,
-                    next(
-                        model_id
-                        for model_id in model_ids
-                        if self.models[model_id].provider in {r.provider for r in usable}
-                    ),
+                    control_model,
                     event_sink=event_sink,
                 )
                 adjudications.append(result)
@@ -403,12 +396,9 @@ class CouncilEngine:
                 responses,
             )
 
-        usable_providers = {response.provider for response in usable}
-        control_model = next(
-            model_id
-            for model_id in model_ids
-            if self.models[model_id].provider in usable_providers
-        )
+        if not usable_model_ids:
+            raise RuntimeError("council has no healthy control model")
+        control_model = usable_model_ids[0]
         protocol_name = str(
             task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)
         ).lower()
@@ -431,22 +421,22 @@ class CouncilEngine:
             voter=task.metadata.get("council_voter_model") or "voter",
         )
         critic_model = self._resolve_role_model(
-            council.critic, control_model, model_ids
+            council.critic, control_model, usable_model_ids
         )
         synthesizer_model = self._resolve_role_model(
-            council.synthesizer, control_model, model_ids
+            council.synthesizer, control_model, usable_model_ids
         )
         verifier_model = self._resolve_role_model(
-            council.verifier, control_model, model_ids
+            council.verifier, control_model, usable_model_ids
         )
         judge_model = self._resolve_role_model(
-            council.judge, control_model, model_ids
+            council.judge, control_model, usable_model_ids
         )
         red_team_model = self._resolve_role_model(
-            council.red_team, control_model, model_ids
+            council.red_team, control_model, usable_model_ids
         )
         voter_model = self._resolve_role_model(
-            council.voter, control_model, model_ids
+            council.voter, control_model, usable_model_ids
         )
         protocol_runner = get_protocol(protocol)
         protocol_result = await protocol_runner.critique_rounds(
