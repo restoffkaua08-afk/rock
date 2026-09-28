@@ -12,8 +12,12 @@ class Provider(ABC):
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
         raise NotImplementedError
 
-    async def health_check(self) -> bool:
-        return True
+    async def health_check(self, model: Model, *, timeout: float = 10) -> bool:
+        try:
+            response = await self.generate("ping", model, timeout=timeout)
+            return not bool(response.error) and bool(response.content.strip())
+        except Exception:
+            return False
 
     def capabilities(self) -> set[Capability]:
         return {Capability.TEXT}
