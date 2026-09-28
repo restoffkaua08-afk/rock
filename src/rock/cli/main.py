@@ -78,10 +78,10 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
                 "max_cost": settings.rock_max_cost,
                 "max_rounds": settings.rock_council_rounds,
             },
-            metadata={
-                "council_protocol": settings.rock_council_protocol,
-            },
         ),
+        metadata={
+            "council_protocol": settings.rock_council_protocol,
+        },
     )
 
 
