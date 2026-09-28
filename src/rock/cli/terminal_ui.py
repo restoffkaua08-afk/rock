@@ -1,3 +1,4 @@
+# ruff: isort: skip_file
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -70,10 +71,7 @@ class RockTerminalUI:
             prompt=prompt,
             mode=mode,
             session_id=session_id[:8],
-            models={
-                name: Activity(name=name, kind="model")
-                for name in model_names
-            },
+            models={name: Activity(name=name, kind="model") for name in model_names},
             stages={
                 "Critic": Activity("Critic", "stage"),
                 "Synthesizer": Activity("Synthesizer", "stage"),
@@ -172,9 +170,16 @@ class RockTerminalUI:
         info.add_column("Valor", justify="right")
         info.add_row("Modo", self.state.mode)
         info.add_row("Sessão", self.state.session_id or "—")
-        info.add_row("Fase", self.state.phase)
-        info.add_row("Modelos", f"{sum(a.status == 'success' for a in self.state.models.values())}/{len(self.state.models)}")
-        info.add_row("Agentes", f"{sum(a.status == 'success' for a in self.state.stages.values())}/{len(self.state.stages)}")
+        info.add_row(
+            "Modelos",
+            f"{sum(a.status == 'success' for a in self.state.models.values())}/"
+            f"{len(self.state.models)}",
+        )
+        info.add_row(
+            "Etapas",
+            f"{sum(a.status == 'success' for a in self.state.stages.values())}/"
+            f"{len(self.state.stages)}",
+        )
 
         status_text = "Processando..."
         border = "yellow"
@@ -196,12 +201,23 @@ class RockTerminalUI:
         )
 
         if width < 100:
-            body = Group(prompt_panel, models, stages, Panel(info, title="Status", border_style="blue"), final)
-        else:
-            from rich.columns import Columns
             body = Group(
                 prompt_panel,
-                Columns([Group(models, stages, final), Panel(info, title="Execução", border_style="blue")], equal=False, expand=True),
+                models,
+                stages,
+                Panel(info, title="Status", border_style="blue"),
+                final,
+            )
+        else:
+            from rich.columns import Columns
+
+            body = Group(
+                prompt_panel,
+                Columns(
+                    [Group(models, stages, final), Panel(info, title="Execução", border_style="blue")],
+                    equal=False,
+                    expand=True,
+                ),
             )
         return body
 
@@ -213,4 +229,5 @@ class RockTerminalUI:
 
 def interactive_prompt(console: Console) -> str:
     from rich.prompt import Prompt
+
     return Prompt.ask("[bold cyan]rock>[/bold cyan]").strip()
