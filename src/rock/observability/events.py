@@ -25,3 +25,25 @@ class SQLiteEventSink:
 class NullEventSink:
     def emit(self, task_id: str, kind: str, data: dict[str, Any]) -> None:
         return None
+
+
+class TaskEventAdapter:
+    """Adapt Rock runtime event callbacks to the persistent event sink."""
+
+    def __init__(self, sink: EventSink, task_id: str) -> None:
+        self.sink = sink
+        self.task_id = task_id
+
+    def __call__(
+        self,
+        kind: str,
+        name: str,
+        status: str,
+        detail: str,
+        error: str | None = None,
+    ) -> None:
+        self.sink.emit(
+            self.task_id,
+            f"{kind}.{status}",
+            {"name": name, "detail": detail, "error": error},
+        )
