@@ -143,6 +143,7 @@ class AdjudicationStatus(str, Enum):
 
 class Adjudication(BaseModel):
     conflict_id: str
+    claim_ids: list[str] = Field(default_factory=list)
     status: AdjudicationStatus
     decision: str
     rationale: str = ""
