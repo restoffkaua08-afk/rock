@@ -35,3 +35,33 @@ async def test_litellm_provider_passes_explicit_credentials(monkeypatch) -> None
     assert response.input_tokens == 3
     assert response.output_tokens == 5
     assert response.estimated_cost == 0.0123
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "message", "expected"),
+    [
+        (401, "Invalid API key", "authentication"),
+        (429, "Rate limit exceeded", "rate_limit"),
+        (404, "model not found", "model_invalid"),
+    ],
+)
+async def test_litellm_provider_normalizes_failures(
+    monkeypatch, status_code: int, message: str, expected: str
+) -> None:
+    class FakeError(Exception):
+        def __init__(self) -> None:
+            super().__init__(message)
+            self.status_code = status_code
+
+    async def fake_acompletion(**kwargs):
+        raise FakeError()
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_acompletion))
+    provider = LiteLLMProvider("openai", api_key="secret")
+    model = Model(id="openai:default", provider="openai", model_name="openai/test")
+
+    with pytest.raises(Exception) as caught:
+        await provider.generate("hello", model, timeout=5)
+
+    assert getattr(caught.value, "code", None) == expected
