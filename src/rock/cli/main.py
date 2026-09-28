@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import typer
 from rich.console import Console
+from typer.core import TyperGroup
 from rich.panel import Panel
 
 from rock.agents.cli_agents import ExternalAgentRunner
@@ -19,9 +20,16 @@ from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
 from rock.storage.sqlite import SQLiteStore
 
+class RockGroup(TyperGroup):
+    def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:
+        if args and not args[0].startswith("-") and args[0] not in self.commands:
+            args = ["run", *args]
+        return super().parse_args(ctx, args)
+
+
 app = typer.Typer(
+    cls=RockGroup,
     help="Rock — terminal-first AI orchestration runtime.",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 console = Console()
 
