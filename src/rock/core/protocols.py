@@ -96,6 +96,44 @@ class DebateProtocol(CouncilProtocolRunner):
         )
 
 
+class RedTeamProtocol(CouncilProtocolRunner):
+    protocol = CouncilProtocol.RED_TEAM
+
+    async def critique_rounds(self, engine, context, critic_model, rounds, *, event_sink=None):
+        material = "\n\n".join(
+            f"[{r.provider}/{r.model}]\n{r.content}" for r in context.responses
+        )
+        prompt = (
+            "You are Rock's red-team agent. Your job is to actively attack the "
+            "candidate answers before synthesis. Find hidden assumptions, factual "
+            "risks, contradictions, missing edge cases, ambiguous requirements and "
+            "ways the final answer could fail. Do not merely summarize. Return "
+            "specific attack findings and concrete tests or corrections.\n\n"
+            f"Task:\n{context.task.prompt}\n\nCandidate answers:\n{material}"
+        )
+        result = await engine.debate_turn(
+            context.task,
+            critic_model,
+            prompt,
+            event_sink=event_sink,
+            event_name="Red Team",
+        )
+        for round_number in range(2, max(1, rounds) + 1):
+            follow_up = (
+                "Continue the red-team attack. Re-examine your previous findings, "
+                "try to disprove them, and identify any remaining failure modes. "
+                f"Round: {round_number}/{rounds}\n\nPrevious findings:\n{result.content}"
+            )
+            result = await engine.debate_turn(
+                context.task,
+                critic_model,
+                follow_up,
+                event_sink=event_sink,
+                event_name="Red Team",
+            )
+        return result
+
+
 class CritiqueSynthesisProtocol(CouncilProtocolRunner):
     protocol = CouncilProtocol.CRITIQUE_SYNTHESIS
 
@@ -126,4 +164,5 @@ def get_protocol(protocol: CouncilProtocol) -> CouncilProtocolRunner:
         CouncilProtocol.PARALLEL: ParallelProtocol(),
         CouncilProtocol.CRITIQUE_SYNTHESIS: CritiqueSynthesisProtocol(),
         CouncilProtocol.DEBATE: DebateProtocol(),
+        CouncilProtocol.RED_TEAM: RedTeamProtocol(),
     }[protocol]
