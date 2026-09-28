@@ -7,13 +7,19 @@ class MockProvider(Provider):
         self.name = name
 
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
+        if "verification agent" in prompt.lower():
+            content = "PASS\nMock verification: synthesis is consistent with the supplied responses."
+        elif "critical reviewer" in prompt.lower():
+            content = "Mock critique: responses are available and internally consistent."
+        elif "synthesis agent" in prompt.lower():
+            content = f"Mock synthesis from {self.name}. The supplied responses were considered."
+        else:
+            content = f"Mock response from {self.name}. Received task: {prompt}"
+
         return Response(
             provider=self.name,
             model=model.model_name,
-            content=(
-                f"Mock response from {self.name}. "
-                f"Received task: {prompt}"
-            ),
+            content=content,
         )
 
     def capabilities(self) -> set[Capability]:
