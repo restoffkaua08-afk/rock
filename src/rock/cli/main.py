@@ -21,7 +21,6 @@ from rock.storage.sqlite import SQLiteStore
 
 app = typer.Typer(help="Rock — terminal-first AI orchestration runtime.")
 console = Console()
-console = Console()
 
 
 def build_engine() -> tuple[CouncilEngine, list[str]]:
@@ -311,14 +310,15 @@ def doctor(
         console.print(f"  - {root}")
 
 
-@app.callback(invoke_without_command=True)
-def root(
-    ctx: typer.Context,
-    prompt: str | None = typer.Argument(None, help="Optional direct prompt."),
-) -> None:
+@app.callback(
+    invoke_without_command=True,
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def root(ctx: typer.Context) -> None:
     if ctx.invoked_subcommand is not None:
         return
 
+    prompt = " ".join(ctx.args).strip()
     if prompt:
         _run(prompt, TaskMode.COUNCIL, False)
         return
