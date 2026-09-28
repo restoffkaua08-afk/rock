@@ -1,5 +1,7 @@
 param([Parameter(Mandatory=$true,Position=0)][string]$Prompt,[string]$Mode="council")
 $Root = Split-Path -Parent $PSScriptRoot
+$Repo = Join-Path $Root "rock"
+Set-Location $Repo
 $Python = Join-Path $Root "rock\.venv\Scripts\python.exe"
 $RockExe = Join-Path $Root "rock\.venv\Scripts\rock.exe"
 if (Test-Path $RockExe) {
