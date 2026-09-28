@@ -14,6 +14,7 @@ class AdjudicationEngine:
         model_id: str,
         *,
         event_sink=None,
+        cost_budget=None,
     ) -> Adjudication:
         prompt = (
             "You are Rock's adjudication agent. Resolve the conflict below using only "
@@ -40,6 +41,7 @@ class AdjudicationEngine:
             prompt,
             event_sink=event_sink,
             event_name="Adjudicator",
+            cost_budget=cost_budget,
         )
         return self.parse(conflict, response)
 
