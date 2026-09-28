@@ -168,6 +168,20 @@ class CouncilEngine:
 
         return await asyncio.gather(*(limited(model_id) for model_id in model_ids))
 
+    def _resolve_role_model(
+        self,
+        requested: str | None,
+        fallback: str,
+        available_model_ids: list[str],
+    ) -> str:
+        if requested:
+            normalized = requested.strip().lower()
+            for model_id in available_model_ids:
+                model = self.models[model_id]
+                if normalized in {model_id.lower(), model.provider.lower(), model.model_name.lower()}:
+                    return model_id
+        return fallback
+
     @staticmethod
     def normalize(responses: list[Response]) -> list[Response]:
         return [r for r in responses if r.content.strip() and not r.error]
@@ -328,7 +342,16 @@ class CouncilEngine:
             protocol = CouncilProtocol.PARALLEL
 
         rounds = max(1, min(task.policy.budget.max_rounds, 5))
-        critique = await self.critique(task, usable, control_model, event_sink=event_sink)
+        critic_model = self._resolve_role_model(
+            task.metadata.get("council_critic_model"), control_model, model_ids
+        )
+        synthesizer_model = self._resolve_role_model(
+            task.metadata.get("council_synthesizer_model"), control_model, model_ids
+        )
+        verifier_model = self._resolve_role_model(
+            task.metadata.get("council_verifier_model"), control_model, model_ids
+        )
+        critique = await self.critique(task, usable, critic_model, event_sink=event_sink)
         if protocol == CouncilProtocol.CRITIQUE_SYNTHESIS and rounds > 1:
             for round_number in range(2, rounds + 1):
                 self._emit(
@@ -349,20 +372,20 @@ class CouncilEngine:
                 critique = await self.critique(
                     task,
                     augmented,
-                    control_model,
+                    critic_model,
                     event_sink=event_sink,
                 )
         synthesis = await self.synthesize(
             task,
             usable,
             critique,
-            control_model,
+            synthesizer_model,
             event_sink=event_sink,
         )
         if synthesis.error:
             verification = Verification(
                 target="synthesis",
-                verifier=f"{self.models[control_model].provider}/{self.models[control_model].model_name}",
+                verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
                 checks=["cost_budget"],
                 passed=False,
                 findings=[synthesis.error],
@@ -377,7 +400,7 @@ class CouncilEngine:
             task,
             synthesis,
             usable,
-            control_model,
+            verifier_model,
             event_sink=event_sink,
         )
         return synthesis.content, verification, responses
