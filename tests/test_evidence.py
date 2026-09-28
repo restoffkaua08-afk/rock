@@ -99,3 +99,28 @@ def test_adjudication_preserves_conflict_claim_ids() -> None:
         ),
     )
     assert result.claim_ids == conflict.claim_ids
+
+
+def test_conflict_contains_only_contradictory_claims() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is required. Python is useful for automation."),
+            response("b", "Feature X is optional. Rust is useful for systems."),
+        ]
+    )
+    assert len(conflicts) == 1
+    assert set(conflicts[0].claim_statements.values()) == {
+        "Feature X is required.",
+        "Feature X is optional.",
+    }
+
+
+def test_conflict_does_not_pair_unrelated_claims_with_global_markers() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is required. The sky is blue."),
+            response("b", "Feature X is optional. This is not a statement about the sky."),
+        ]
+    )
+    assert len(conflicts) == 1
+    assert all("sky" not in claim.lower() for claim in conflicts[0].claim_statements.values())
