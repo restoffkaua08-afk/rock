@@ -377,6 +377,7 @@ class CouncilEngine:
             verifier=task.metadata.get("council_verifier_model") or "verifier",
             judge=task.metadata.get("council_judge_model") or "judge",
             red_team=task.metadata.get("council_red_team_model") or "red_team",
+            voter=task.metadata.get("council_voter_model") or "voter",
         )
         critic_model = self._resolve_role_model(
             council.critic, control_model, model_ids
@@ -393,6 +394,9 @@ class CouncilEngine:
         red_team_model = self._resolve_role_model(
             council.red_team, control_model, model_ids
         )
+        voter_model = self._resolve_role_model(
+            council.voter, control_model, model_ids
+        )
         protocol_runner = get_protocol(protocol)
         critique = await protocol_runner.critique_rounds(
             self,
@@ -400,6 +404,8 @@ class CouncilEngine:
             (
                 red_team_model
                 if protocol == CouncilProtocol.RED_TEAM
+                else voter_model
+                if protocol == CouncilProtocol.VOTE
                 else judge_model
                 if protocol == CouncilProtocol.DEBATE
                 else critic_model
