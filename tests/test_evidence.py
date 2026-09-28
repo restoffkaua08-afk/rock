@@ -1,4 +1,5 @@
-from rock.core.contracts import Response
+from rock.core.contracts import AdjudicationStatus, Conflict, Response
+from rock.core.adjudication import AdjudicationEngine
 from rock.core.evidence import EvidenceEngine
 
 
@@ -6,9 +7,14 @@ def response(provider: str, content: str) -> Response:
     return Response(provider=provider, model="mock", content=content)
 
 
+def collected(*responses: Response):
+    return EvidenceEngine.collect(list(responses))
+
+
 def test_collect_builds_traceable_evidence() -> None:
-    evidence = EvidenceEngine.collect(
-        [response("a", "The system supports feature X."), response("b", "Feature X is optional.")]
+    evidence = collected(
+        response("a", "The system supports feature X."),
+        response("b", "Feature X is optional."),
     )
     assert len(evidence) == 2
     assert evidence[0].source == "a/mock"
@@ -16,29 +22,28 @@ def test_collect_builds_traceable_evidence() -> None:
 
 
 def test_detect_conflicts_flags_explicit_contradiction() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required and always enabled."),
             response("b", "Feature X is optional and never enabled."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert conflicts[0].resolved is False
     assert conflicts[0].severity > 0.5
 
 
 def test_detect_conflicts_does_not_flag_unrelated_answers() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [response("a", "Python is useful for automation."), response("b", "Rust is useful for systems.")]
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
+            response("a", "Python is useful for automation."),
+            response("b", "Rust is useful for systems."),
+        )
     )
     assert conflicts == []
 
 
-
 def test_adjudication_parse_keeps_inconclusive_status() -> None:
-    from rock.core.adjudication import AdjudicationEngine
-    from rock.core.contracts import AdjudicationStatus, Conflict
-
     conflict = Conflict(
         id="c1",
         topic="feature",
@@ -57,11 +62,8 @@ def test_adjudication_parse_keeps_inconclusive_status() -> None:
     assert result.confidence == 0.4
 
 
-
 def test_collect_extracts_traceable_claims() -> None:
-    evidence = EvidenceEngine.collect(
-        [response("a", "Python supports automation. Python is widely used.")]
-    )
+    evidence = collected(response("a", "Python supports automation. Python is widely used."))
     assert len(evidence) == 1
     assert len(evidence[0].claims) == 2
     assert evidence[0].claims[0].evidence_id == evidence[0].id
@@ -69,21 +71,18 @@ def test_collect_extracts_traceable_claims() -> None:
 
 
 def test_conflict_contains_claim_ids() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required."),
             response("b", "Feature X is optional."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert len(conflicts[0].claim_ids) == 2
 
 
-
 def test_adjudication_preserves_conflict_claim_ids() -> None:
-    from rock.core.adjudication import AdjudicationEngine
-
-    conflict = __import__("rock.core.contracts", fromlist=["Conflict"]).Conflict(
+    conflict = Conflict(
         id="c-claims",
         topic="feature",
         claims=["required", "optional"],
@@ -102,12 +101,12 @@ def test_adjudication_preserves_conflict_claim_ids() -> None:
 
 
 def test_conflict_contains_only_contradictory_claims() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required. Python is useful for automation."),
             response("b", "Feature X is optional. Rust is useful for systems."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert set(conflicts[0].claim_statements.values()) == {
         "Feature X is required.",
@@ -116,26 +115,24 @@ def test_conflict_contains_only_contradictory_claims() -> None:
 
 
 def test_conflict_does_not_pair_unrelated_claims_with_global_markers() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required. The sky is blue."),
             response("b", "Feature X is optional. This is not a statement about the sky."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert all("sky" not in claim.lower() for claim in conflicts[0].claim_statements.values())
 
 
 def test_collect_preserves_markdown_list_claims() -> None:
-    evidence = EvidenceEngine.collect(
-        [
-            response(
-                "a",
-                "- Python supports automation.\n- Rust supports systems programming.\n"
-                "1. Both have strong tooling."
-            )
-        ]
-    ))
+    evidence = collected(
+        response(
+            "a",
+            "- Python supports automation.\n- Rust supports systems programming.\n"
+            "1. Both have strong tooling.",
+        )
+    )
     assert len(evidence[0].claims) == 3
     assert evidence[0].claims[0].statement == "Python supports automation."
     assert evidence[0].claims[1].statement == "Rust supports systems programming."
@@ -143,9 +140,7 @@ def test_collect_preserves_markdown_list_claims() -> None:
 
 
 def test_collect_keeps_question_and_exclamation_claim_boundaries() -> None:
-    evidence = EvidenceEngine.collect(
-        [response("a", "Is feature X required? Feature Y is optional!")]
-    )
+    evidence = collected(response("a", "Is feature X required? Feature Y is optional!"))
     assert [claim.statement for claim in evidence[0].claims] == [
         "Is feature X required?",
         "Feature Y is optional!",
@@ -153,47 +148,37 @@ def test_collect_keeps_question_and_exclamation_claim_boundaries() -> None:
 
 
 def test_collect_assigns_claim_polarity() -> None:
-    evidence = EvidenceEngine.collect(
-        [response("a", "Feature X is required. Feature Y is optional.")]
-    )
+    evidence = collected(response("a", "Feature X is required. Feature Y is optional."))
     assert [claim.polarity for claim in evidence[0].claims] == ["positive", "negative"]
 
 
 def test_conflict_metadata_records_polarity_contradiction() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required."),
             response("b", "Feature X is optional."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert "polarity/positive-negative" in conflicts[0].metadata["markers"]
 
 
-def test_claim_polarity_is_positive_and_negative() -> None:
-    evidence = EvidenceEngine.collect(
-        [response("a", "Feature X is required. Feature Y is optional.")]
-    )
-    assert evidence[0].claims[0].polarity == "positive"
-    assert evidence[0].claims[1].polarity == "negative"
-
-
 def test_conflict_requires_claim_similarity() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is required."),
             response("b", "Database Y is optional."),
-        ]
-    ))
+        )
+    )
     assert conflicts == []
 
 
 def test_similar_claims_can_conflict_with_different_wording() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
-        [
+    conflicts = EvidenceEngine.detect_conflicts(
+        collected(
             response("a", "Feature X is mandatory."),
             response("b", "Feature X is optional."),
-        ]
-    ))
+        )
+    )
     assert len(conflicts) == 1
     assert conflicts[0].metadata["similarity_threshold"] == 0.35
