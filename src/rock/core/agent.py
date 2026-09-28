@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rock.core.contracts import Agent, Capability, Model, Response
+from rock.core.contracts import Agent, Response
 from rock.core.providers import Provider
 
 
