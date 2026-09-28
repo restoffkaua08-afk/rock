@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from rock.core.contracts import Execution, ExecutionStatus, PermissionDecision, Tool
 from rock.core.policy import PolicyEngine
+from rock.core.verification import VerificationLoop, execution_verification
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,32 @@ class ToolExecutionEngine:
 
         execution.status = ExecutionStatus.SUCCESS
         execution.output = output
+
+        if not execution.error:
+            verified, verification, attempts = await VerificationLoop(
+                max_attempts=1
+            ).run(
+                execution,
+                verify=lambda item: _verify_execution(item),
+                correct=lambda item, _verification, _attempt: _no_correction(item),
+            )
+            execution.metadata = {
+                "verification_passed": verification.passed,
+                "verification_attempts": len(attempts),
+            }
+            if not verification.passed:
+                execution.status = ExecutionStatus.FAILED
+                execution.error = "tool result failed verification"
+            else:
+                execution.output = verified.output
+        return execution
+
+    @staticmethod
+    async def _verify_execution(execution: Execution):
+        return execution_verification(execution)
+
+    @staticmethod
+    async def _no_correction(execution, _verification, _attempt):
         return execution
 
     @staticmethod
