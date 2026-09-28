@@ -1,78 +1,75 @@
-# Rock V0.1 — Windows e pendrive
+# Rock V0.1 — Pendrive Windows
 
-Esta documentação prepara o Rock para uso em um pendrive. O código, ambiente virtual, configuração e banco podem ficar no pendrive. Provedores online continuam exigindo suas próprias credenciais.
+## O que fica no pendrive
 
-## 1. Baixar
-```powershell
-cd E:\
-git clone https://github.com/restoffkaua08-afk/rock.git ROCK-USB\rock
-cd E:\ROCK-USB\rock
 ```
-Troque E: pela letra do pendrive.
-
-## 2. Python
-Use Python 3.12+:
-```powershell
-python --version
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+ROCK-USB/
+  rock/              # código + .venv + .env
+  superpowers/       # baixado automaticamente
+  scripts/           # launchers PowerShell
+  models/             # opcional, modelos locais
 ```
 
-## 3. Configuração
-```powershell
-Copy-Item .env.example .env
-notepad .env
-```
-Preencha somente os provedores usados. Nunca publique `.env`.
+## Preparação automática
 
-## 4. Ollama
-Para guardar modelos na pasta do pendrive:
+Depois de colocar/clonar este repositório em `ROCK-USB\rock`:
+
 ```powershell
-$env:OLLAMA_MODELS="E:\ROCK-USB\models\ollama"
+cd E:\ROCK-USB
+.\scripts\setup.ps1 -InstallAgents -InstallOllama
+.\scripts\install-path.ps1
+rock doctor
+```
+
+O setup:
+- cria o ambiente Python;
+- instala o Rock e dependências;
+- cria `.env`;
+- pergunta apenas pelas chaves de API que ainda não estiverem configuradas;
+- baixa/atualiza o Superpowers;
+- configura o caminho do Superpowers;
+- instala o Codex CLI se npm estiver disponível e `-InstallAgents` for usado;
+- verifica Ollama;
+- executa doctor/providers/skills.
+
+O Superpowers é uma biblioteca de skills e metodologia para agentes; a instalação varia conforme o harness, por isso o Rock mantém o checkout separado e usa suas skills como fonte. citeturn0search1turn0search3
+
+## Ollama
+
+O Ollama possui instalador oficial para Windows e API local em `localhost:11434`. citeturn4search0turn4search3
+
+Para instalar manualmente quando necessário:
+```powershell
+irm https://ollama.com/install.ps1 | iex
+```
+
+Depois:
+```powershell
 ollama pull llama3.2:3b
 ```
 
-## 5. Teste sem APIs
+Para ferramentas de código, o Ollama atualmente documenta integrações com Claude Code, OpenCode e Codex via `ollama launch`. citeturn4search9
+
+## Chamar o Rock
+
 ```powershell
-$env:ROCK_MODE="mock"
-.\.venv\Scripts\rock.exe doctor
-.\.venv\Scripts\rock.exe "Teste do Rock"
+E:\ROCK-USB\scripts\rock.ps1 "Analise meu projeto"
 ```
 
-## 6. APIs reais
-Configure as chaves no `.env`, use `ROCK_MODE=live` e execute:
-```powershell
-.\.venv\Scripts\rock.exe doctor
-.\.venv\Scripts\rock.exe providers
-.\.venv\Scripts\rock.exe "Analise esta tarefa"
-```
-
-## 7. Superpowers
-```powershell
-$env:ROCK_SUPERPOWERS_PATH="E:\ROCK-USB\superpowers"
-.\.venv\Scripts\rock.exe skills
-```
-O Rock descobre skills no formato `SKILL.md`.
-
-## 8. Chamar pelo pendrive
-```powershell
-E:\ROCK-USB\scripts\rock.ps1 "sua tarefa"
-```
-Para adicionar os scripts ao PATH somente na sessão atual:
+Ou:
 ```powershell
 . E:\ROCK-USB\scripts\install-path.ps1
-rock "sua tarefa"
+rock "Analise meu projeto"
 ```
 
-## 9. Diagnóstico
+## Atualizar
+
 ```powershell
-rock doctor
-rock providers
-rock models
-rock skills
-rock sessions
+.\scripts\update.ps1
 ```
 
-## Segurança
-Não coloque chaves dentro dos scripts nem faça commit de `.env`. Ações de efeito colateral passam pela política de permissões.
+O update baixa as alterações do GitHub, reinstala a versão local e atualiza o Superpowers.
+
+## Credenciais
+
+Chaves de API não são colocadas no GitHub. Elas ficam no `.env` local do pendrive. Se o pendrive for compartilhado, não mantenha chaves pessoais nele.
