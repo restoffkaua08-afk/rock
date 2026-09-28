@@ -176,6 +176,12 @@ def doctor() -> None:
 
 
 @app.callback(invoke_without_command=True)
-def root(ctx: typer.Context) -> None:
+def root(
+    ctx: typer.Context,
+    prompt: str | None = typer.Argument(None, help="Optional direct prompt."),
+) -> None:
     if ctx.invoked_subcommand is None:
-        console.print(ctx.get_help())
+        if prompt:
+            _run(prompt, TaskMode.COUNCIL, False)
+        else:
+            console.print(ctx.get_help())
