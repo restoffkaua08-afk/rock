@@ -16,19 +16,19 @@ def test_collect_builds_traceable_evidence() -> None:
 
 
 def test_detect_conflicts_flags_explicit_contradiction() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required and always enabled."),
             response("b", "Feature X is optional and never enabled."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert conflicts[0].resolved is False
     assert conflicts[0].severity > 0.5
 
 
 def test_detect_conflicts_does_not_flag_unrelated_answers() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [response("a", "Python is useful for automation."), response("b", "Rust is useful for systems.")]
     )
     assert conflicts == []
@@ -69,12 +69,12 @@ def test_collect_extracts_traceable_claims() -> None:
 
 
 def test_conflict_contains_claim_ids() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required."),
             response("b", "Feature X is optional."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert len(conflicts[0].claim_ids) == 2
 
@@ -102,12 +102,12 @@ def test_adjudication_preserves_conflict_claim_ids() -> None:
 
 
 def test_conflict_contains_only_contradictory_claims() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required. Python is useful for automation."),
             response("b", "Feature X is optional. Rust is useful for systems."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert set(conflicts[0].claim_statements.values()) == {
         "Feature X is required.",
@@ -116,12 +116,12 @@ def test_conflict_contains_only_contradictory_claims() -> None:
 
 
 def test_conflict_does_not_pair_unrelated_claims_with_global_markers() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required. The sky is blue."),
             response("b", "Feature X is optional. This is not a statement about the sky."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert all("sky" not in claim.lower() for claim in conflicts[0].claim_statements.values())
 
@@ -135,7 +135,7 @@ def test_collect_preserves_markdown_list_claims() -> None:
                 "1. Both have strong tooling."
             )
         ]
-    )
+    ))
     assert len(evidence[0].claims) == 3
     assert evidence[0].claims[0].statement == "Python supports automation."
     assert evidence[0].claims[1].statement == "Rust supports systems programming."
@@ -160,12 +160,12 @@ def test_collect_assigns_claim_polarity() -> None:
 
 
 def test_conflict_metadata_records_polarity_contradiction() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required."),
             response("b", "Feature X is optional."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert "polarity/positive-negative" in conflicts[0].metadata["markers"]
 
@@ -179,21 +179,21 @@ def test_claim_polarity_is_positive_and_negative() -> None:
 
 
 def test_conflict_requires_claim_similarity() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is required."),
             response("b", "Database Y is optional."),
         ]
-    )
+    ))
     assert conflicts == []
 
 
 def test_similar_claims_can_conflict_with_different_wording() -> None:
-    conflicts = EvidenceEngine.detect_conflicts(
+    conflicts = EvidenceEngine.detect_conflicts(EvidenceEngine.collect(
         [
             response("a", "Feature X is mandatory."),
             response("b", "Feature X is optional."),
         ]
-    )
+    ))
     assert len(conflicts) == 1
     assert conflicts[0].metadata["similarity_threshold"] == 0.35
