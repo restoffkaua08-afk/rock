@@ -4,7 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 
-from rock.core.contracts import CouncilProtocol, Model, Response, Task, Verification
+from rock.core.contracts import Council, CouncilProtocol, Model, Response, Task, Verification
 from rock.core.providers import Provider, ProviderError
 from rock.core.protocols import ProtocolContext, get_protocol
 
@@ -336,21 +336,32 @@ class CouncilEngine:
             for model_id in model_ids
             if self.models[model_id].provider in usable_providers
         )
-        protocol_name = str(task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)).lower()
+        protocol_name = str(
+            task.metadata.get("council_protocol", CouncilProtocol.PARALLEL.value)
+        ).lower()
         try:
             protocol = CouncilProtocol(protocol_name)
         except ValueError:
             protocol = CouncilProtocol.PARALLEL
 
         rounds = max(1, min(task.policy.budget.max_rounds, 5))
+        council = Council(
+            id=task.id,
+            members=model_ids,
+            protocol=protocol,
+            rounds=rounds,
+            critic=task.metadata.get("council_critic_model") or "critic",
+            synthesizer=task.metadata.get("council_synthesizer_model") or "synthesizer",
+            verifier=task.metadata.get("council_verifier_model") or "verifier",
+        )
         critic_model = self._resolve_role_model(
-            task.metadata.get("council_critic_model"), control_model, model_ids
+            council.critic, control_model, model_ids
         )
         synthesizer_model = self._resolve_role_model(
-            task.metadata.get("council_synthesizer_model"), control_model, model_ids
+            council.synthesizer, control_model, model_ids
         )
         verifier_model = self._resolve_role_model(
-            task.metadata.get("council_verifier_model"), control_model, model_ids
+            council.verifier, control_model, model_ids
         )
         protocol_runner = get_protocol(protocol)
         critique = await protocol_runner.critique_rounds(
