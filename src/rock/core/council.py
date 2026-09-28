@@ -329,6 +329,20 @@ class CouncilEngine:
             control_model,
             event_sink=event_sink,
         )
+        if synthesis.error:
+            verification = Verification(
+                target="synthesis",
+                verifier=f"{self.models[control_model].provider}/{self.models[control_model].model_name}",
+                checks=["cost_budget"],
+                passed=False,
+                findings=[synthesis.error],
+                confidence=0.0,
+            )
+            return (
+                "Rock stopped before synthesis because the task budget was exhausted.",
+                verification,
+                responses,
+            )
         verification = await self.verify(
             task,
             synthesis,
