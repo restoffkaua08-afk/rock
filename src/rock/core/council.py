@@ -208,6 +208,7 @@ class CouncilEngine:
         evidence=None,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         if not responses:
             return Response(
@@ -269,6 +270,7 @@ class CouncilEngine:
         *,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -306,6 +308,7 @@ class CouncilEngine:
         evidence=None,
         adjudications=None,
         event_sink: EventSink | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Verification:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -371,6 +374,7 @@ class CouncilEngine:
         evidence = EvidenceEngine.collect(usable)
         conflicts = EvidenceEngine.detect_conflicts(evidence)
         adjudications = []
+        cost_budget = CostBudget(task.policy.budget.max_cost)
         control_model = usable_model_ids[0] if usable_model_ids else None
         if conflicts and control_model:
             adjudicator = AdjudicationEngine()
@@ -381,6 +385,7 @@ class CouncilEngine:
                     conflict,
                     control_model,
                     event_sink=event_sink,
+                    cost_budget=cost_budget,
                 )
                 adjudications.append(result)
                 conflict.resolved = result.status.value == "resolved"
@@ -464,7 +469,7 @@ class CouncilEngine:
         protocol_runner = get_protocol(protocol)
         protocol_result = await protocol_runner.critique_rounds(
             self,
-            ProtocolContext(task=task, responses=usable),
+            ProtocolContext(task=task, responses=usable, cost_budget=cost_budget),
             (
                 red_team_model
                 if protocol == CouncilProtocol.RED_TEAM
