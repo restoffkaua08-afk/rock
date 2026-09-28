@@ -86,8 +86,10 @@ class CouncilEngine:
                 if response.error:
                     last = response
                 else:
-                    if cost_budget is not None:
-                        await cost_budget.record(response.estimated_cost)
+                    if cost_budget is not None and response.estimated_cost is not None:
+                        if not await cost_budget.reserve(response.estimated_cost):
+                            last = Response(provider=model.provider, model=model.model_name, content="", error="budget_exceeded: cost limit reached")
+                            break
                     self._emit(event_sink, event_kind, name, "success", "concluído")
                     return response
             except TimeoutError:
