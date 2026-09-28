@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$Repo = Join-Path $Root "rock"
+$Repo = $Root
 Set-Location $Repo
 if (!(Get-Command git -ErrorAction SilentlyContinue)) { throw "Git não encontrado." }
 git pull --ff-only
