@@ -39,7 +39,10 @@ def build_engine() -> tuple[CouncilEngine, list[str]]:
         if settings.rock_mode.lower() == "mock":
             provider = MockProvider(provider_name)
         elif configured:
-            provider = LiteLLMProvider(provider_name)
+            provider = LiteLLMProvider(
+                provider_name,
+                api_base=settings.ollama_base_url if provider_name == "ollama" else None,
+            )
         else:
             continue
         providers[provider_name] = provider
