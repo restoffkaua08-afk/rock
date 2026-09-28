@@ -35,6 +35,11 @@ class TaskMode(str, Enum):
     AGENT = "agent"
 
 
+class CouncilProtocol(str, Enum):
+    PARALLEL = "parallel"
+    CRITIQUE_SYNTHESIS = "critique_synthesis"
+
+
 class Budget(BaseModel):
     max_cost: float | None = None
     max_parallel: int = 5
@@ -177,7 +182,7 @@ class Agent(BaseModel):
 class Council(BaseModel):
     id: str
     members: list[str]
-    protocol: str = "parallel"
+    protocol: CouncilProtocol = CouncilProtocol.PARALLEL
     rounds: int = 1
     critic: str = "critic"
     synthesizer: str = "synthesizer"
