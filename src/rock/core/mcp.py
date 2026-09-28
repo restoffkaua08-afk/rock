@@ -35,8 +35,10 @@ class MCPToolRegistry:
 
     def __init__(self) -> None:
         self.tools: dict[str, Tool] = {}
+        self.servers: dict[str, MCPServerConfig] = {}
 
     async def discover(self, server: MCPServerConfig) -> list[Tool]:
+        self.servers[server.id] = server
         if server.transport == "streamable-http":
             if not server.url:
                 raise MCPError(f"MCP server {server.id} has no URL")
@@ -87,6 +89,51 @@ class MCPToolRegistry:
             if page.next_cursor is None:
                 return discovered
             cursor = page.next_cursor
+
+
+    def handler(self, tool_id: str):
+        """Return an async handler that invokes the matching MCP tool."""
+
+        tool = self.get(tool_id)
+        if tool is None:
+            raise MCPError(f"Unknown MCP tool: {tool_id}")
+        server_id = tool.metadata.get("mcp_server")
+        server = self.servers.get(server_id)
+        if server is None:
+            raise MCPError(f"MCP server not registered: {server_id}")
+
+        async def invoke(arguments: dict) -> dict:
+            if server.transport == "streamable-http":
+                if not server.url:
+                    raise MCPError(f"MCP server {server.id} has no URL")
+                async with streamablehttp_client(server.url) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        result = await session.call_tool(tool.name, arguments=arguments)
+            elif server.transport == "stdio":
+                if not server.command:
+                    raise MCPError(f"MCP server {server.id} has no command")
+                params = StdioServerParameters(
+                    command=server.command,
+                    args=list(server.args),
+                    env=server.env,
+                )
+                async with stdio_client(params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        result = await session.call_tool(tool.name, arguments=arguments)
+            else:
+                raise MCPError(f"Unsupported MCP transport: {server.transport}")
+
+            content = []
+            for item in result.content:
+                if hasattr(item, "model_dump"):
+                    content.append(item.model_dump())
+                else:
+                    content.append(str(item))
+            return {"content": content, "is_error": bool(result.isError)}
+
+        return invoke
 
     def get(self, tool_id: str) -> Tool | None:
         return self.tools.get(tool_id)
