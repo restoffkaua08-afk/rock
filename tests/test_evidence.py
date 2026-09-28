@@ -124,3 +124,29 @@ def test_conflict_does_not_pair_unrelated_claims_with_global_markers() -> None:
     )
     assert len(conflicts) == 1
     assert all("sky" not in claim.lower() for claim in conflicts[0].claim_statements.values())
+
+
+def test_collect_preserves_markdown_list_claims() -> None:
+    evidence = EvidenceEngine.collect(
+        [
+            response(
+                "a",
+                "- Python supports automation.\n- Rust supports systems programming.\n"
+                "1. Both have strong tooling."
+            )
+        ]
+    )
+    assert len(evidence[0].claims) == 3
+    assert evidence[0].claims[0].statement == "Python supports automation."
+    assert evidence[0].claims[1].statement == "Rust supports systems programming."
+    assert evidence[0].claims[2].statement == "Both have strong tooling."
+
+
+def test_collect_keeps_question_and_exclamation_claim_boundaries() -> None:
+    evidence = EvidenceEngine.collect(
+        [response("a", "Is feature X required? Feature Y is optional!")]
+    )
+    assert [claim.statement for claim in evidence[0].claims] == [
+        "Is feature X required?",
+        "Feature Y is optional!",
+    ]
