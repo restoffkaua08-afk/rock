@@ -43,3 +43,31 @@ async def test_council_critique_protocol_supports_multiple_rounds() -> None:
     assert len(responses) == 2
     assert "Mock synthesis" in synthesis
     assert verification.passed
+
+
+@pytest.mark.asyncio
+async def test_council_roles_can_use_different_models() -> None:
+    providers = {"a": MockProvider("a"), "b": MockProvider("b")}
+    models = {
+        "a:default": Model(id="a:default", provider="a", model_name="mock-a"),
+        "b:default": Model(id="b:default", provider="b", model_name="mock-b"),
+    }
+    engine = CouncilEngine(providers, models)
+    task = Task(
+        id="t-roles",
+        prompt="hello",
+        metadata={
+            "council_critic_model": "b",
+            "council_synthesizer_model": "a",
+            "council_verifier_model": "b",
+        },
+    )
+
+    synthesis, verification, responses = await engine.run(
+        task, ["a:default", "b:default"]
+    )
+
+    assert len(responses) == 2
+    assert "Mock synthesis from a" in synthesis
+    assert verification.verifier == "b/mock-b"
+    assert verification.passed
