@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from rock.core.contracts import Permission, PermissionDecision
+from rock.core.contracts import Permission, PermissionDecision, Policy, Tool
 
 
 class PermissionEngine:
-    """Central policy gate for all future tool/agent side effects."""
+    """Central permission evaluator for side-effecting operations."""
 
     SAFE_READ_ACTIONS: ClassVar[set[str]] = {"read", "list", "inspect", "status"}
     WRITE_ACTIONS: ClassVar[set[str]] = {"write", "edit", "delete", "execute", "network"}
@@ -35,3 +35,25 @@ class PermissionEngine:
             decision=PermissionDecision.ASK,
             reason="Side-effecting filesystem action requires explicit approval.",
         )
+
+
+class PolicyEngine:
+    """Apply task policy and tool permissions before a tool handler runs."""
+
+    def __init__(self, policy: Policy, permission_engine: PermissionEngine | None = None) -> None:
+        self.policy = policy
+        self.permission_engine = permission_engine or PermissionEngine()
+
+    def decide(self, tool: Tool, action: str, *, interactive: bool = False) -> PermissionDecision:
+        if not self.policy.allow_tools:
+            return PermissionDecision.DENY
+
+        matches = [
+            permission
+            for permission in tool.permissions
+            if permission.action in {action, "*"}
+        ]
+        if not matches:
+            return PermissionDecision.ASK if interactive else PermissionDecision.DENY
+
+        return self.permission_engine.decide(matches[0], interactive=interactive)
