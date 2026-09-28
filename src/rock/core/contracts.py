@@ -113,6 +113,16 @@ class Response(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
 
 
+class Conflict(BaseModel):
+    id: str
+    topic: str
+    claims: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    severity: float = 0.5
+    resolved: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProtocolResult(BaseModel):
     protocol: CouncilProtocol
     response: Response
