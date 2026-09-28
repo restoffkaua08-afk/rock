@@ -40,6 +40,7 @@ class CouncilProtocol(str, Enum):
     CRITIQUE_SYNTHESIS = "critique_synthesis"
     DEBATE = "debate"
     RED_TEAM = "red_team"
+    VOTE = "vote"
 
 
 class Budget(BaseModel):
@@ -191,6 +192,7 @@ class Council(BaseModel):
     verifier: str = "verifier"
     judge: str = "judge"
     red_team: str = "red_team"
+    voter: str = "voter"
 
 
 class Workflow(BaseModel):
