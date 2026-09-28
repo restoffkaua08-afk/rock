@@ -376,7 +376,6 @@ class CouncilEngine:
         evidence = EvidenceEngine.collect(usable)
         conflicts = EvidenceEngine.detect_conflicts(evidence)
         adjudications = []
-        cost_budget = CostBudget(task.policy.budget.max_cost)
         control_model = usable_model_ids[0] if usable_model_ids else None
         if conflicts and control_model:
             adjudicator = AdjudicationEngine()
@@ -499,6 +498,7 @@ class CouncilEngine:
             synthesizer_model,
             adjudications=adjudications,
             event_sink=event_sink,
+            cost_budget=cost_budget,
         )
         if synthesis.error:
             verification = Verification(
@@ -522,6 +522,7 @@ class CouncilEngine:
             evidence=evidence,
             adjudications=adjudications,
             event_sink=event_sink,
+            cost_budget=cost_budget,
         )
         if verification.passed or not task.policy.require_verification:
             return synthesis.content, verification, responses
@@ -552,6 +553,7 @@ class CouncilEngine:
                 synthesizer_model,
                 adjudications=adjudications,
                 event_sink=event_sink,
+                cost_budget=cost_budget,
             )
             if synthesis.error:
                 return (
@@ -574,6 +576,7 @@ class CouncilEngine:
                 evidence=evidence,
                 adjudications=adjudications,
                 event_sink=event_sink,
+                cost_budget=cost_budget,
             )
             if verification.passed:
                 self._emit(
