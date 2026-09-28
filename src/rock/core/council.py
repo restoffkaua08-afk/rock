@@ -367,7 +367,7 @@ class CouncilEngine:
         return Verification(
             target="synthesis",
             claim_ids=[claim.id for item in (evidence or []) for claim in item.claims],
-            adjudication_ids=[item.conflict_id for item in (adjudications or [])],
+            adjudication_ids=[f"adjudication:{item.conflict_id}" for item in (adjudications or [])],
             verifier=f"{model.provider}/{model.model_name}",
             checks=["model_cross_check", "claim_consistency", "adjudication_consistency", "source_consistency", "non_empty_synthesis"],
             passed=passed,
@@ -517,6 +517,11 @@ class CouncilEngine:
             cost_budget=cost_budget,
         )
         if synthesis.error:
+            reason = (
+                "task budget was exhausted"
+                if synthesis.error.startswith("budget_exceeded:")
+                else "synthesis provider failed"
+            )
             verification = Verification(
                 target="synthesis",
                 verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
@@ -526,7 +531,7 @@ class CouncilEngine:
                 confidence=0.0,
             )
             return (
-                "Rock stopped before synthesis because the task budget was exhausted.",
+                f"Rock stopped before synthesis because the {reason}.",
                 verification,
                 responses,
             )
@@ -572,8 +577,13 @@ class CouncilEngine:
                 cost_budget=cost_budget,
             )
             if synthesis.error:
+                reason = (
+                    "task budget was exhausted"
+                    if synthesis.error.startswith("budget_exceeded:")
+                    else "synthesis provider failed"
+                )
                 return (
-                    "Rock stopped during verification correction because the task budget was exhausted.",
+                    f"Rock stopped during verification correction because the {reason}.",
                     Verification(
                         target="synthesis",
                         verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
