@@ -371,9 +371,10 @@ class CouncilEngine:
         usable = self.normalize(responses)
         usable_model_ids = self._healthy_model_ids(usable, self.models)
         evidence = EvidenceEngine.collect(usable)
-        conflicts = EvidenceEngine.detect_conflicts(usable)
+        conflicts = EvidenceEngine.detect_conflicts(evidence)
         adjudications = []
-        if conflicts:
+        control_model = usable_model_ids[0] if usable_model_ids else None
+        if conflicts and control_model:
             adjudicator = AdjudicationEngine()
             for conflict in conflicts:
                 result = await adjudicator.adjudicate(
