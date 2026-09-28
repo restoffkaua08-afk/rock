@@ -36,11 +36,15 @@ class AgentRuntime:
         sections = []
         if agent.system_policy.strip():
             sections.append(f"Agent policy:\n{agent.system_policy.strip()}")
-        if agent.skills:
-            sections.append(
-                "Available skills (descriptions/instructions only; no tools are executed):\n"
-                + "\n".join(f"- {skill}" for skill in agent.skills)
-            )
+        if agent.skills and self.registry:
+            loaded = self.registry.select(agent.skills)
+            if loaded:
+                sections.append(
+                    "Loaded capabilities:\n"
+                    + "\n\n".join(
+                        f"## {item.name}\n{item.instructions}" for item in loaded
+                    )
+                )
         sections.append(f"Task:\n{prompt}")
         if history:
             sections.append(
