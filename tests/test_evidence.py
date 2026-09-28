@@ -55,3 +55,25 @@ def test_adjudication_parse_keeps_inconclusive_status() -> None:
     )
     assert result.status is AdjudicationStatus.INCONCLUSIVE
     assert result.confidence == 0.4
+
+
+
+def test_collect_extracts_traceable_claims() -> None:
+    evidence = EvidenceEngine.collect(
+        [response("a", "Python supports automation. Python is widely used.")]
+    )
+    assert len(evidence) == 1
+    assert len(evidence[0].claims) == 2
+    assert evidence[0].claims[0].evidence_id == evidence[0].id
+    assert evidence[0].claims[0].source == "a/mock"
+
+
+def test_conflict_contains_claim_ids() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is required."),
+            response("b", "Feature X is optional."),
+        ]
+    )
+    assert len(conflicts) == 1
+    assert len(conflicts[0].claim_ids) == 2
