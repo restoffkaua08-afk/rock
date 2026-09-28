@@ -79,7 +79,10 @@ class CouncilEngine:
                     error=f"unavailable: {exc}",
                 )
 
-            if attempt < task.policy.max_retries and last and not last.error.startswith(("authentication:", "model_invalid:")):
+            retryable = last is not None and not last.error.startswith(
+                ("authentication:", "model_invalid:")
+            )
+            if attempt < task.policy.max_retries and retryable:
                 next_attempt = attempt + 2
                 self._emit(
                     event_sink,
