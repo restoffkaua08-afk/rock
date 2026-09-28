@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from rock.core.contracts import Artifact, Execution, Response, Session, Task, Verification
