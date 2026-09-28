@@ -398,7 +398,7 @@ class CouncilEngine:
             council.voter, control_model, model_ids
         )
         protocol_runner = get_protocol(protocol)
-        critique = await protocol_runner.critique_rounds(
+        protocol_result = await protocol_runner.critique_rounds(
             self,
             ProtocolContext(task=task, responses=usable),
             (
@@ -412,6 +412,14 @@ class CouncilEngine:
             ),
             rounds,
             event_sink=event_sink,
+        )
+        critique = protocol_result.response
+        self._emit(
+            event_sink,
+            "stage",
+            "Protocol Result",
+            "success",
+            f"{protocol_result.protocol.value}: {len(protocol_result.evidence)} evidência(s)",
         )
         synthesis = await self.synthesize(
             task,
