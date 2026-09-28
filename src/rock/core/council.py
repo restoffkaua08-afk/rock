@@ -10,11 +10,29 @@ from rock.core.providers import Provider, ProviderError
 
 EventSink = Callable[[str, str, str, str, str | None], None]
 
+class CostBudget:
+    def __init__(self, limit: float | None) -> None:
+        self.limit = limit
+        self.total = 0.0
+        self._lock = asyncio.Lock()
+
+    async def can_spend(self) -> bool:
+        async with self._lock:
+            return self.limit is None or self.total < self.limit
+
+    async def record(self, amount: float | None) -> None:
+        if amount is None or amount < 0:
+            return
+        async with self._lock:
+            self.total += amount
+
+
 
 class CouncilEngine:
     def __init__(self, providers: dict[str, Provider], models: dict[str, Model]) -> None:
         self.providers = providers
         self.models = models
+        self._cost_budget: CostBudget | None = None
 
     @staticmethod
     def _emit(
@@ -38,11 +56,15 @@ class CouncilEngine:
         event_sink: EventSink | None = None,
         event_kind: str = "model",
         event_name: str | None = None,
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         name = event_name or model.model_name
         last: Response | None = None
         total_attempts = task.policy.max_retries + 1
         self._emit(event_sink, event_kind, name, "running", f"tentativa 1/{total_attempts}")
+
+        if cost_budget is not None and not await cost_budget.can_spend():
+            return Response(provider=model.provider, model=model.model_name, content="", error="budget_exceeded: cost limit reached")
 
         for attempt in range(total_attempts):
             try:
@@ -53,6 +75,8 @@ class CouncilEngine:
                 if response.error:
                     last = response
                 else:
+                    if cost_budget is not None:
+                        await cost_budget.record(response.estimated_cost)
                     self._emit(event_sink, event_kind, name, "success", "concluído")
                     return response
             except TimeoutError:
@@ -118,6 +142,8 @@ class CouncilEngine:
         event_sink: EventSink | None = None,
     ) -> list[Response]:
         semaphore = asyncio.Semaphore(max(1, task.policy.budget.max_parallel))
+        cost_budget = CostBudget(task.policy.budget.max_cost)
+        self._cost_budget = cost_budget
 
         async def one(model_id: str) -> Response:
             model = self.models[model_id]
@@ -131,6 +157,7 @@ class CouncilEngine:
                 event_sink=event_sink,
                 event_kind="model",
                 event_name=model.model_name,
+                cost_budget=cost_budget,
             )
             response.latency_ms = (time.perf_counter() - started) * 1000
             return response
@@ -178,6 +205,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Critic",
+            cost_budget=self._cost_budget,
         )
 
     async def synthesize(
@@ -208,6 +236,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Synthesizer",
+            cost_budget=self._cost_budget,
         )
 
     async def verify(
@@ -238,6 +267,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Verifier",
+            cost_budget=self._cost_budget,
         )
         text = result.content.strip()
         passed = bool(text) and text.upper().startswith("PASS")
