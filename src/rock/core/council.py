@@ -300,6 +300,8 @@ class CouncilEngine:
         responses: list[Response],
         model_id: str,
         *,
+        evidence=None,
+        adjudications=None,
         event_sink: EventSink | None = None,
     ) -> Verification:
         model = self.models[model_id]
@@ -381,6 +383,22 @@ class CouncilEngine:
             "success",
             f"{len(evidence)} evidência(s), {len(conflicts)} conflito(s) potencial(is)",
         )
+        if not usable_model_ids:
+            verification = Verification(
+                target="synthesis",
+                verifier="rock",
+                checks=["providers"],
+                passed=False,
+                findings=["No healthy control model is available."],
+                confidence=0.0,
+            )
+            return (
+                "Rock could not produce a synthesis because no control provider is healthy.",
+                verification,
+                responses,
+            )
+        control_model = usable_model_ids[0]
+
         if not usable:
             verification = Verification(
                 target="synthesis",
