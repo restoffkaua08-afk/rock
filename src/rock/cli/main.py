@@ -16,6 +16,7 @@ from rock.core.contracts import Agent, Model, Policy, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
 from rock.core.providers import Provider
 from rock.core.skills import SkillRegistry, default_skill_roots
+from rock.observability.events import SQLiteEventSink, TaskEventAdapter
 from rock.observability.logging import configure_logging
 from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
@@ -150,11 +151,20 @@ def _run(prompt: str, mode: TaskMode, verbose: bool, agent_names: list[str] | No
         session.id,
         [engine.models[model_id].model_name for model_id in model_ids],
     )
+    event_sink = SQLiteEventSink(store)
+    runtime_event = TaskEventAdapter(event_sink, task.id)
+    def combined_event(kind, name, status, detail, error=None):
+        ui.event(kind, name, status, detail, error)
+        runtime_event(kind, name, status, detail, error)
+
     try:
         synthesis, verification, responses = asyncio.run(
-            engine.run(task, model_ids, event_sink=ui.event)
+            engine.run(task, model_ids, event_sink=combined_event)
         )
         store.save_run(task.id, responses, synthesis, verification)
+        store.save_verification(verification)
+        for response in responses:
+            store.save_provider_usage(task.id, response)
         ui.finish(synthesis, verification.passed)
     except Exception as exc:  # noqa: BLE001
         ui.event("stage", "Runtime", "failed", "erro inesperado", str(exc))
