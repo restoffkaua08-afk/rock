@@ -51,4 +51,11 @@ ROCK_COUNCIL_MODELS=openai,anthropic,gemini
 ```
 Os nomes aceitos são `openai`, `anthropic`, `deepseek`, `perplexity`, `gemini` e `ollama`. Os modelos individuais continuam configuráveis pelas variáveis `ROCK_<PROVIDER>_MODEL`.
 
+O protocolo também pode ser configurado:
+```text
+ROCK_COUNCIL_PROTOCOL=parallel
+ROCK_COUNCIL_ROUNDS=1
+```
+`parallel` executa o fluxo padrão. `critique_synthesis` permite repetir a crítica em múltiplas rodadas, limitado por `ROCK_COUNCIL_ROUNDS` e pelo orçamento da tarefa.
+
 Falha de um provedor não derruba os demais.
