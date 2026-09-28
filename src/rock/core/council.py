@@ -342,7 +342,6 @@ class CouncilEngine:
         except ValueError:
             protocol = CouncilProtocol.PARALLEL
 
-        protocol_runner = None
         rounds = max(1, min(task.policy.budget.max_rounds, 5))
         critic_model = self._resolve_role_model(
             task.metadata.get("council_critic_model"), control_model, model_ids
