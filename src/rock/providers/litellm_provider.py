@@ -16,13 +16,6 @@ class LiteLLMProvider(Provider):
         self.api_key = api_key
         self.api_base = api_base
 
-    async def health_check(self, model: Model, *, timeout: float = 10) -> bool:
-        try:
-            response = await self.generate("ping", model, timeout=timeout)
-            return not bool(response.error) and bool(response.content.strip())
-        except Exception:
-            return False
-
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
         import litellm
 
