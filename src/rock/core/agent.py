@@ -17,8 +17,9 @@ class AgentRuntime:
     provider and the runtime owns the iteration limit.
     """
 
-    def __init__(self, providers: dict[str, Provider]) -> None:
+    def __init__(self, providers: dict[str, Provider], registry: SkillRegistry | None = None) -> None:
         self.providers = providers
+        self.registry = registry
 
     @staticmethod
     def _emit(
