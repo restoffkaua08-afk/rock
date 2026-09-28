@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any
 
 from rock.core.contracts import Artifact, Execution, Response, Session, Task, Verification
@@ -101,7 +102,7 @@ class SQLiteStore:
                 "INSERT INTO provider_usage(task_id, provider, model, input_tokens, output_tokens, estimated_cost, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (task_id, response.provider, response.model, response.input_tokens, response.output_tokens,
-                 response.estimated_cost, response.model_dump(mode="json").get("timestamp", "")),
+                 response.estimated_cost, datetime.now(timezone.utc).isoformat()),
             )
 
     def list_events(self, task_id: str) -> list[dict[str, Any]]:
