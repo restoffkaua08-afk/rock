@@ -113,6 +113,15 @@ class Response(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
 
 
+class ProtocolResult(BaseModel):
+    protocol: CouncilProtocol
+    response: Response
+    evidence: list[Evidence] = Field(default_factory=list)
+    disagreements: list[str] = Field(default_factory=list)
+    confidence: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class Verification(BaseModel):
     target: str
     verifier: str
