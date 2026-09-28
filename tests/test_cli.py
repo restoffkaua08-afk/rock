@@ -3,7 +3,6 @@ from typer.testing import CliRunner
 from rock.cli.main import app
 
 runner = CliRunner()
-runner = CliRunner()
 
 
 def test_root_prompt_uses_mock_council(monkeypatch, tmp_path) -> None:
