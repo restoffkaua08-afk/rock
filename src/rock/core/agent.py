@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from rock.core.contracts import Agent, AgentRun, Capability, ExecutionStatus, Response
 from rock.core.providers import Provider
+from rock.core.skills import SkillRegistry
 
 EventSink = Callable[[str, str, str, str, str | None], None]
 
