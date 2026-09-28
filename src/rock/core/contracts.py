@@ -194,6 +194,7 @@ class Execution(BaseModel):
     input: dict[str, Any] = Field(default_factory=dict)
     output: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Permission(BaseModel):
