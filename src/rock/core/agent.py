@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from rock.core.contracts import Agent, AgentRun, Capability, ExecutionStatus, Response
 from rock.core.providers import Provider
+from rock.core.skills import SkillRegistry
 
 EventSink = Callable[[str, str, str, str, str | None], None]
 
@@ -16,8 +17,9 @@ class AgentRuntime:
     provider and the runtime owns the iteration limit.
     """
 
-    def __init__(self, providers: dict[str, Provider]) -> None:
+    def __init__(self, providers: dict[str, Provider], registry: SkillRegistry | None = None) -> None:
         self.providers = providers
+        self.registry = registry
 
     @staticmethod
     def _emit(
@@ -34,11 +36,15 @@ class AgentRuntime:
         sections = []
         if agent.system_policy.strip():
             sections.append(f"Agent policy:\n{agent.system_policy.strip()}")
-        if agent.skills:
-            sections.append(
-                "Available skills (descriptions/instructions only; no tools are executed):\n"
-                + "\n".join(f"- {skill}" for skill in agent.skills)
-            )
+        if agent.skills and self.registry:
+            loaded = self.registry.select(agent.skills)
+            if loaded:
+                sections.append(
+                    "Loaded capabilities:\n"
+                    + "\n\n".join(
+                        f"## {item.name}\n{item.instructions}" for item in loaded
+                    )
+                )
         sections.append(f"Task:\n{prompt}")
         if history:
             sections.append(
