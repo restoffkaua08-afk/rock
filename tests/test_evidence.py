@@ -168,3 +168,32 @@ def test_conflict_metadata_records_polarity_contradiction() -> None:
     )
     assert len(conflicts) == 1
     assert "polarity/positive-negative" in conflicts[0].metadata["markers"]
+
+
+def test_claim_polarity_is_positive_and_negative() -> None:
+    evidence = EvidenceEngine.collect(
+        [response("a", "Feature X is required. Feature Y is optional.")]
+    )
+    assert evidence[0].claims[0].polarity == "positive"
+    assert evidence[0].claims[1].polarity == "negative"
+
+
+def test_conflict_requires_claim_similarity() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is required."),
+            response("b", "Database Y is optional."),
+        ]
+    )
+    assert conflicts == []
+
+
+def test_similar_claims_can_conflict_with_different_wording() -> None:
+    conflicts = EvidenceEngine.detect_conflicts(
+        [
+            response("a", "Feature X is mandatory."),
+            response("b", "Feature X is optional."),
+        ]
+    )
+    assert len(conflicts) == 1
+    assert conflicts[0].metadata["similarity_threshold"] == 0.35
