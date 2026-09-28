@@ -230,33 +230,60 @@ def sessions() -> None:
 
 
 @app.command()
-def doctor() -> None:
-    """Check the local Rock runtime and configured providers."""
+def doctor(
+    check: bool = typer.Option(
+        False,
+        "--check",
+        help="Make live provider checks. May consume API credits.",
+    ),
+) -> None:
+    """Check local configuration; use --check for live provider connectivity."""
     settings = get_settings()
     console.print(Panel.fit("ROCK DOCTOR"))
     console.print("✓ Python runtime detected")
     console.print(f"✓ Mode: {settings.rock_mode}")
     console.print(f"✓ SQLite: {settings.rock_db_path}")
 
-    engine, model_ids = build_engine()
-    if settings.rock_mode.lower() == "mock":
-        console.print("✓ Mock providers available")
-    elif not model_ids:
-        console.print("✗ No online providers configured")
+    definitions = [
+        ("OpenAI", settings.openai_api_key, settings.rock_openai_model),
+        ("Anthropic", settings.anthropic_api_key, settings.rock_anthropic_model),
+        ("DeepSeek", settings.deepseek_api_key, settings.rock_deepseek_model),
+        ("Perplexity", settings.perplexity_api_key, settings.rock_perplexity_model),
+        ("Gemini", settings.gemini_api_key, settings.rock_gemini_model),
+    ]
+    for name, key, model in definitions:
+        status = "configured" if key else "not configured"
+        console.print(f"{'✓' if key else '○'} {name}: {status} | model={model}")
+
+    console.print(
+        f"✓ Ollama: endpoint={settings.ollama_base_url} | model={settings.rock_ollama_model}"
+    )
+
+    if check:
+        engine, model_ids = build_engine()
+        if settings.rock_mode.lower() == "mock":
+            console.print("✓ Live check skipped: ROCK_MODE=mock")
+        elif not model_ids:
+            console.print("✗ Live check unavailable: no configured online providers")
+        else:
+            async def check_providers() -> list[tuple[str, str, bool]]:
+                results = []
+                for model_id in model_ids:
+                    model = engine.models[model_id]
+                    provider = engine.providers[model.provider]
+                    healthy = await provider.health_check(model, timeout=10)
+                    results.append((model.provider, model.model_name, healthy))
+                return results
+
+            results = asyncio.run(check_providers())
+            for name, model, healthy in results:
+                console.print(
+                    f"{'✓' if healthy else '✗'} {name}: "
+                    f"{'reachable' if healthy else 'unavailable'} | model={model}"
+                )
     else:
-        async def check_providers() -> list[tuple[str, bool]]:
-            results = []
-            for model_id in model_ids:
-                model = engine.models[model_id]
-                provider = engine.providers[model.provider]
-                results.append((model.provider, await provider.health_check(model, timeout=10)))
-            return results
+        console.print("[dim]Live provider checks disabled. Use: rock doctor --check[/dim]")
 
-        results = asyncio.run(check_providers())
-        for name, healthy in results:
-            console.print(f"{'✓' if healthy else '✗'} {name}: {'reachable' if healthy else 'unavailable'}")
-
-    console.print(f"✓ Ollama endpoint: {settings.ollama_base_url}")
     runner = ExternalAgentRunner()
     available = runner.available()
     console.print(
