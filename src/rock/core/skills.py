@@ -1,10 +1,10 @@
+# ruff: isort: skip_file
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
 from rock.config.settings import get_settings
-
 from rock.core.contracts import Skill
 
 
