@@ -41,30 +41,27 @@ class EvidenceEngine:
         return evidence
 
     @staticmethod
-    def detect_conflicts(responses: list[Response]) -> list[Conflict]:
-        usable = [r for r in responses if not r.error and r.content.strip()]
+    def detect_conflicts(evidence: list[Evidence]) -> list[Conflict]:
         conflicts: list[Conflict] = []
-        response_claims = {
-            index: _response_claims(response, index)
-            for index, response in enumerate(usable, 1)
-        }
 
-        for left_index, left in enumerate(usable, 1):
-            for right_index, right in enumerate(usable[left_index:], left_index + 1):
-                left_claims = response_claims[left_index]
-                right_claims = response_claims[right_index]
+        for left_index, left in enumerate(evidence):
+            for right in evidence[left_index + 1 :]:
                 conflicting_pairs = []
 
-                for left_id, left_claim in left_claims.items():
-                    for right_id, right_claim in right_claims.items():
-                        overlap = _key_terms(left_claim) & _key_terms(right_claim)
-                        similarity = _claim_similarity(left_claim, right_claim)
+                for left_claim in left.claims:
+                    for right_claim in right.claims:
+                        overlap = _key_terms(left_claim.statement) & _key_terms(right_claim.statement)
+                        similarity = _claim_similarity(left_claim.statement, right_claim.statement)
                         if not overlap or similarity < 0.35:
                             continue
-                        markers = _contradiction_markers(left_claim, right_claim)
+
+                        markers = _contradiction_markers(
+                            left_claim.statement,
+                            right_claim.statement,
+                        )
                         if markers:
                             conflicting_pairs.append(
-                                (left_id, left_claim, right_id, right_claim, overlap, markers)
+                                (left_claim, right_claim, overlap, markers)
                             )
 
                 if not conflicting_pairs:
@@ -73,9 +70,10 @@ class EvidenceEngine:
                 claim_map: dict[str, str] = {}
                 overlaps: set[str] = set()
                 markers: list[str] = []
-                for left_id, left_claim, right_id, right_claim, overlap, pair_markers in conflicting_pairs:
-                    claim_map[left_id] = left_claim
-                    claim_map[right_id] = right_claim
+
+                for left_claim, right_claim, overlap, pair_markers in conflicting_pairs:
+                    claim_map[left_claim.id] = left_claim.statement
+                    claim_map[right_claim.id] = right_claim.statement
                     overlaps.update(overlap)
                     markers.extend(pair_markers)
 
@@ -88,10 +86,7 @@ class EvidenceEngine:
                         claims=list(claim_map.values()),
                         claim_ids=list(claim_map),
                         claim_statements=claim_map,
-                        sources=[
-                            f"{left.provider}/{left.model}",
-                            f"{right.provider}/{right.model}",
-                        ],
+                        sources=[left.source, right.source],
                         severity=severity,
                         metadata={
                             "overlap_terms": sorted(overlaps),
@@ -101,6 +96,7 @@ class EvidenceEngine:
                         },
                     )
                 )
+
         return conflicts
 
 
@@ -192,10 +188,3 @@ def _extract_claims(text: str) -> list[str]:
             statements.append(statement)
 
     return statements or [normalized.strip()]
-
-
-def _response_claims(response: Response, response_index: int) -> dict[str, str]:
-    return {
-        f"response-{response_index}-claim-{claim_index}": statement
-        for claim_index, statement in enumerate(_extract_claims(response.content), 1)
-    }
