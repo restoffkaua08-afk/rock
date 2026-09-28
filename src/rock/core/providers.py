@@ -5,6 +5,15 @@ from abc import ABC, abstractmethod
 from rock.core.contracts import Capability, Model, Response
 
 
+class ProviderError(RuntimeError):
+    """Normalized provider failure with a stable category for the runtime."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class Provider(ABC):
     """Rock-owned provider contract. Concrete providers are adapters."""
 
