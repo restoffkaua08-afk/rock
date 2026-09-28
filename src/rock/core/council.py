@@ -547,6 +547,7 @@ class CouncilEngine:
                 usable,
                 correction,
                 synthesizer_model,
+                adjudications=adjudications,
                 event_sink=event_sink,
             )
             if synthesis.error:
@@ -567,6 +568,8 @@ class CouncilEngine:
                 synthesis,
                 usable,
                 verifier_model,
+                evidence=evidence,
+                adjudications=adjudications,
                 event_sink=event_sink,
             )
             if verification.passed:
