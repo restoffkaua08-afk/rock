@@ -52,12 +52,16 @@ class EvidenceEngine:
                 if not contradiction_markers:
                     continue
                 severity = min(1.0, 0.5 + 0.1 * len(contradiction_markers))
+                left_claims = _response_claims(left, index + 1)
+                right_claims = _response_claims(right, index + 2)
+                claim_map = {**left_claims, **right_claims}
                 conflicts.append(
                     Conflict(
                         id=f"conflict-{len(conflicts) + 1}",
                         topic="shared claims",
-                        claims=[left.content[:500], right.content[:500]],
-                        claim_ids=_claim_ids(left, right),
+                        claims=list(claim_map.values()),
+                        claim_ids=list(claim_map),
+                        claim_statements=claim_map,
                         sources=[
                             f"{left.provider}/{left.model}",
                             f"{right.provider}/{right.model}",
@@ -102,9 +106,8 @@ def _extract_claims(text: str) -> list[str]:
     return statements or [text.strip()]
 
 
-def _claim_ids(left: Response, right: Response) -> list[str]:
-    ids = []
-    for index, response in enumerate((left, right), 1):
-        for claim_index, statement in enumerate(_extract_claims(response.content), 1):
-            ids.append(f"response-{index}-claim-{claim_index}")
-    return ids
+def _response_claims(response: Response, response_index: int) -> dict[str, str]:
+    return {
+        f"response-{response_index}-claim-{claim_index}": statement
+        for claim_index, statement in enumerate(_extract_claims(response.content), 1)
+    }
