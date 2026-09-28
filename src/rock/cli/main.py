@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import typer
 from rich.console import Console
-from typer.core import TyperGroup
 from rich.panel import Panel
+from typer.core import TyperGroup
 
 from rock.agents.cli_agents import ExternalAgentRunner
 from rock.cli.terminal_ui import RockTerminalUI, interactive_prompt
