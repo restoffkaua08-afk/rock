@@ -38,6 +38,7 @@ class TaskMode(str, Enum):
 class CouncilProtocol(str, Enum):
     PARALLEL = "parallel"
     CRITIQUE_SYNTHESIS = "critique_synthesis"
+    DEBATE = "debate"
 
 
 class Budget(BaseModel):
@@ -187,6 +188,7 @@ class Council(BaseModel):
     critic: str = "critic"
     synthesizer: str = "synthesizer"
     verifier: str = "verifier"
+    judge: str = "judge"
 
 
 class Workflow(BaseModel):
