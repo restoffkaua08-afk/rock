@@ -195,6 +195,8 @@ class CouncilEngine:
         responses: list[Response],
         model_id: str,
         *,
+        evidence=None,
+        adjudications=None,
         event_sink: EventSink | None = None,
     ) -> Response:
         if not responses:
@@ -289,6 +291,8 @@ class CouncilEngine:
     ) -> Verification:
         model = self.models[model_id]
         provider = self.providers[model.provider]
+        claim_material = "\n\n".join(f"[{claim.id}] {claim.statement} ({claim.source})" for item in (evidence or []) for claim in item.claims)
+        adjudication_material = "\n\n".join(f"[{item.conflict_id}] {item.status.value}: {item.decision}" for item in (adjudications or []))
         prompt = (
             "You are Rock's verification agent. Check the proposed synthesis against the "
             "available independent answers. Look for factual contradictions, unsupported "
@@ -320,6 +324,8 @@ class CouncilEngine:
         )
         return Verification(
             target="synthesis",
+            claim_ids=[claim.id for item in (evidence or []) for claim in item.claims],
+            adjudication_ids=[item.conflict_id for item in (adjudications or [])],
             verifier=f"{model.provider}/{model.model_name}",
             checks=["model_cross_check", "source_consistency", "non_empty_synthesis"],
             passed=passed,
