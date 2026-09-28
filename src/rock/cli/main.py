@@ -76,6 +76,10 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
             budget={
                 "max_parallel": settings.rock_max_parallel,
                 "max_cost": settings.rock_max_cost,
+                "max_rounds": settings.rock_council_rounds,
+            },
+            metadata={
+                "council_protocol": settings.rock_council_protocol,
             },
         ),
     )
