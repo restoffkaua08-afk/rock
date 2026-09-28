@@ -41,24 +41,46 @@ class EvidenceEngine:
     def detect_conflicts(responses: list[Response]) -> list[Conflict]:
         usable = [r for r in responses if not r.error and r.content.strip()]
         conflicts: list[Conflict] = []
+        response_claims = {
+            index: _response_claims(response, index)
+            for index, response in enumerate(usable, 1)
+        }
+
         for left_index, left in enumerate(usable, 1):
             for right_index, right in enumerate(usable[left_index:], left_index + 1):
-                left_terms = _key_terms(left.content)
-                right_terms = _key_terms(right.content)
-                overlap = left_terms & right_terms
-                if not overlap:
+                left_claims = response_claims[left_index]
+                right_claims = response_claims[right_index]
+                conflicting_pairs = []
+
+                for left_id, left_claim in left_claims.items():
+                    for right_id, right_claim in right_claims.items():
+                        overlap = _key_terms(left_claim) & _key_terms(right_claim)
+                        if not overlap:
+                            continue
+                        markers = _contradiction_markers(left_claim, right_claim)
+                        if markers:
+                            conflicting_pairs.append(
+                                (left_id, left_claim, right_id, right_claim, overlap, markers)
+                            )
+
+                if not conflicting_pairs:
                     continue
-                contradiction_markers = _contradiction_markers(left.content, right.content)
-                if not contradiction_markers:
-                    continue
-                severity = min(1.0, 0.5 + 0.1 * len(contradiction_markers))
-                left_claims = _response_claims(left, left_index)
-                right_claims = _response_claims(right, right_index)
-                claim_map = {**left_claims, **right_claims}
+
+                claim_map: dict[str, str] = {}
+                overlaps: set[str] = set()
+                markers: list[str] = []
+                for left_id, left_claim, right_id, right_claim, overlap, pair_markers in conflicting_pairs:
+                    claim_map[left_id] = left_claim
+                    claim_map[right_id] = right_claim
+                    overlaps.update(overlap)
+                    markers.extend(pair_markers)
+
+                unique_markers = list(dict.fromkeys(markers))
+                severity = min(1.0, 0.5 + 0.1 * len(unique_markers))
                 conflicts.append(
                     Conflict(
                         id=f"conflict-{len(conflicts) + 1}",
-                        topic="shared claims",
+                        topic="claim contradiction",
                         claims=list(claim_map.values()),
                         claim_ids=list(claim_map),
                         claim_statements=claim_map,
@@ -67,7 +89,11 @@ class EvidenceEngine:
                             f"{right.provider}/{right.model}",
                         ],
                         severity=severity,
-                        metadata={"overlap_terms": sorted(overlap), "markers": contradiction_markers},
+                        metadata={
+                            "overlap_terms": sorted(overlaps),
+                            "markers": unique_markers,
+                            "pair_count": len(conflicting_pairs),
+                        },
                     )
                 )
         return conflicts
