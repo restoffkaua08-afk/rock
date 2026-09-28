@@ -52,13 +52,13 @@ class EvidenceEngine:
                     for right_claim in right.claims:
                         overlap = _key_terms(left_claim.statement) & _key_terms(right_claim.statement)
                         similarity = _claim_similarity(left_claim.statement, right_claim.statement)
-                        if not overlap or similarity < 0.35:
-                            continue
-
                         markers = _contradiction_markers(
                             left_claim.statement,
                             right_claim.statement,
                         )
+                        if not overlap or (similarity < 0.35 and not markers):
+                            continue
+
                         if markers:
                             conflicting_pairs.append(
                                 (left_claim, right_claim, overlap, markers)
