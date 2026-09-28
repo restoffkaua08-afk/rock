@@ -1,3 +1,4 @@
+# ruff: isort: skip_file
 from rock.cli.main import app
 
 
