@@ -19,8 +19,8 @@ from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
 from rock.storage.sqlite import SQLiteStore
 
-
-
+app = typer.Typer(help="Rock — terminal-first AI orchestration runtime.")
+console = Console()
 app = typer.Typer(help="Rock — terminal-first AI orchestration runtime.")
 console = Console()
 
