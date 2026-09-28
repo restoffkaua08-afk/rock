@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from rock.agents.cli_agents import ExternalAgentRunner
 from rock.config.settings import get_settings
 from rock.core.contracts import Model, Policy, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
@@ -146,6 +147,35 @@ def skills() -> None:
 
 
 @app.command()
+def agents() -> None:
+    """List external coding agents detected on this machine."""
+    runner = ExternalAgentRunner()
+    found = runner.available()
+    if not found:
+        console.print("No external agents detected.")
+        return
+    for agent in found:
+        console.print(f"✓ {agent.name}: {agent.description}")
+
+
+@app.command()
+def agent(
+    name: str = typer.Argument(...),
+    prompt: str = typer.Argument(...),
+    cwd: str | None = typer.Option(None, "--cwd"),
+) -> None:
+    """Run one installed external coding agent through Rock."""
+    from uuid import uuid4
+    runner = ExternalAgentRunner()
+    execution = asyncio.run(runner.run(name, prompt, task_id=str(uuid4()), cwd=cwd))
+    console.print(Panel(execution.output.get("stdout", ""), title=f"Agent: {name}"))
+    if execution.output.get("stderr"):
+        console.print(execution.output["stderr"])
+    if execution.error:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def sessions() -> None:
     """Show stored session/task database location."""
     settings = get_settings()
@@ -170,6 +200,9 @@ def doctor() -> None:
     for name, value in keys.items():
         console.print(f"{'✓' if value else '○'} {name}: {'configured' if value else 'not configured'}")
     console.print(f"✓ Ollama endpoint: {settings.ollama_base_url}")
+    runner = ExternalAgentRunner()
+    available = runner.available()
+    console.print("✓ External agents: " + (", ".join(a.name for a in available) if available else "none"))
     console.print("✓ Skill roots:")
     for root in default_skill_roots():
         console.print(f"  - {root}")
