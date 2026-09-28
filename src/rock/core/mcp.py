@@ -5,6 +5,7 @@ from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
 
 from rock.core.contracts import Tool
 
@@ -40,9 +41,10 @@ class MCPToolRegistry:
         if server.transport == "streamable-http":
             if not server.url:
                 raise MCPError(f"MCP server {server.id} has no URL")
-            async with ClientSession(server.url) as session:
-                await session.initialize()
-                return await self._discover_session(server, session)
+            async with streamablehttp_client(server.url) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    return await self._discover_session(server, session)
 
         if server.transport == "stdio":
             if not server.command:
