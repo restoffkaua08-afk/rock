@@ -20,6 +20,7 @@ from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
 from rock.storage.sqlite import SQLiteStore
 
+
 class RockGroup(TyperGroup):
     def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:
         if args and not args[0].startswith("-") and args[0] not in self.commands:
