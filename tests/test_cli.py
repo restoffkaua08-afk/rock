@@ -22,7 +22,7 @@ def test_run_command_uses_mock_council(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("ROCK_MODE", "mock")
     monkeypatch.setenv("ROCK_DB_PATH", str(tmp_path / "sessions.db"))
 
-    result = runner.invoke(app, ["run", "What", "is", "REST?"])
+    result = runner.invoke(app, ["run", "What is REST?"])
 
     assert result.exit_code == 0, result.output
     assert "Mock synthesis" in result.output
