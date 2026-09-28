@@ -13,6 +13,7 @@ authors = [{name = "Kauã Restoff"}]
 dependencies = [
   "httpx>=0.28,<1",
   "litellm>=1.75,<2",
+  "mcp>=1.28,<2",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
   "rich>=14,<15",
