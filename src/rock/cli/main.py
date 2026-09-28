@@ -222,6 +222,11 @@ def agent_run(
 
     task_id = str(uuid4())
     selected_model = engine.models[selected]
+    registry = SkillRegistry(default_skill_roots())
+    registry.discover()
+    selected_skills = [skill] if skill and registry.get(skill) else []
+    if skill and not selected_skills:
+        raise typer.BadParameter(f"Skill not found: {skill}")
     agent = Agent(
         id=f"agent-{task_id}",
         name="Rock Agent",
@@ -233,9 +238,6 @@ def agent_run(
         max_iterations=iterations,
         skills=selected_skills,
     )
-    registry = SkillRegistry(default_skill_roots())
-    registry.discover()
-    selected_skills = [skill] if skill else []
     runtime = AgentRuntime(engine.providers, registry)
     result = asyncio.run(
         runtime.execute(
