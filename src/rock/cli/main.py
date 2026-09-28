@@ -237,17 +237,25 @@ def doctor() -> None:
     console.print("✓ Python runtime detected")
     console.print(f"✓ Mode: {settings.rock_mode}")
     console.print(f"✓ SQLite: {settings.rock_db_path}")
-    keys = {
-        "OpenAI": settings.openai_api_key,
-        "Anthropic": settings.anthropic_api_key,
-        "DeepSeek": settings.deepseek_api_key,
-        "Perplexity": settings.perplexity_api_key,
-        "Gemini": settings.gemini_api_key,
-    }
-    for name, value in keys.items():
-        console.print(
-            f"{'✓' if value else '○'} {name}: {'configured' if value else 'not configured'}"
-        )
+
+    engine, model_ids = build_engine()
+    if settings.rock_mode.lower() == "mock":
+        console.print("✓ Mock providers available")
+    elif not model_ids:
+        console.print("✗ No online providers configured")
+    else:
+        async def check_providers() -> list[tuple[str, bool]]:
+            results = []
+            for model_id in model_ids:
+                model = engine.models[model_id]
+                provider = engine.providers[model.provider]
+                results.append((model.provider, await provider.health_check(model, timeout=10)))
+            return results
+
+        results = asyncio.run(check_providers())
+        for name, healthy in results:
+            console.print(f"{'✓' if healthy else '✗'} {name}: {'reachable' if healthy else 'unavailable'}")
+
     console.print(f"✓ Ollama endpoint: {settings.ollama_base_url}")
     runner = ExternalAgentRunner()
     available = runner.available()
