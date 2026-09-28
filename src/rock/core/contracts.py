@@ -163,6 +163,8 @@ class ProtocolResult(BaseModel):
 
 class Verification(BaseModel):
     target: str
+    claim_ids: list[str] = Field(default_factory=list)
+    adjudication_ids: list[str] = Field(default_factory=list)
     verifier: str
     checks: list[str] = Field(default_factory=list)
     passed: bool
