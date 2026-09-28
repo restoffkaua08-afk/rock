@@ -24,7 +24,7 @@ if ([version]$version -lt [version]"3.12") { throw "Rock exige Python 3.12+; enc
 
 Write-Step "Criando ambiente Python"
 if (!(Test-Path ".venv")) { python -m venv .venv }
-$Py = Join-Path $Repo ".venv\Scripts\python.exe"
+$Py = Join-Path $Repo ".venv\\Scripts\\python.exe"
 & $Py -m pip install --upgrade pip
 & $Py -m pip install -e ".[dev]"
 
@@ -48,14 +48,19 @@ function Set-EnvValue($Name, $Value) {
 }
 
 $keys = @("OPENAI_API_KEY","ANTHROPIC_API_KEY","DEEPSEEK_API_KEY","PERPLEXITY_API_KEY","GEMINI_API_KEY")
+$hasOnlineProvider = $false
 foreach ($key in $keys) {
   $existing = [Environment]::GetEnvironmentVariable($key)
   if ($existing) {
     Set-EnvValue $key $existing
+    $hasOnlineProvider = $true
     continue
   }
   $current = Get-Content ".env" | Where-Object { $_ -match "^$key=" } | Select-Object -First 1
-  if ($current -and $current.Substring($key.Length + 1).Trim()) { continue }
+  if ($current -and $current.Substring($key.Length + 1).Trim()) {
+    $hasOnlineProvider = $true
+    continue
+  }
   $secure = Read-Host "Chave $key (Enter para pular)" -AsSecureString
   $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   try {
@@ -63,10 +68,18 @@ foreach ($key in $keys) {
   } finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
   }
-  if ($value) { Set-EnvValue $key $value }
+  if ($value) {
+    Set-EnvValue $key $value
+    $hasOnlineProvider = $true
+  }
 }
 
-Set-EnvValue "ROCK_MODE" "live"
+if ($hasOnlineProvider) {
+  Set-EnvValue "ROCK_MODE" "live"
+} else {
+  Set-EnvValue "ROCK_MODE" "mock"
+  Write-Host "Nenhuma chave online configurada; mantendo ROCK_MODE=mock." -ForegroundColor Yellow
+}
 Set-EnvValue "ROCK_DB_PATH" ".rock/sessions.db"
 Set-EnvValue "ROCK_TIMEOUT_SECONDS" "120"
 
@@ -115,5 +128,5 @@ Write-Step "Verificação final"
 
 Write-Host ""
 Write-Host "Rock preparado." -ForegroundColor Green
-Write-Host "Use: .\scripts\install-path.ps1"
+Write-Host "Use: .\\scripts\\install-path.ps1"
 Write-Host "Depois: rock ""sua tarefa"""
