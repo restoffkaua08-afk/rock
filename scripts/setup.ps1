@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$Repo = Join-Path $Root "rock"
+$Repo = $Root
 $Superpowers = Join-Path $Root "superpowers"
 
 function Write-Step($Text) {
