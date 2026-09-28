@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 
 from rock.core.contracts import Model, Response, Task, Verification
-from rock.core.providers import Provider
+from rock.core.providers import Provider, ProviderError
 
 
 EventSink = Callable[[str, str, str, str, str | None], None]
@@ -60,17 +60,26 @@ class CouncilEngine:
                     provider=model.provider,
                     model=model.model_name,
                     content="",
-                    error="timeout",
+                    error="timeout: provider request timed out",
                 )
+            except ProviderError as exc:
+                last = Response(
+                    provider=model.provider,
+                    model=model.model_name,
+                    content="",
+                    error=f"{exc.code}: {exc.message}",
+                )
+                if exc.code in {"authentication", "model_invalid"}:
+                    break
             except Exception as exc:  # noqa: BLE001
                 last = Response(
                     provider=model.provider,
                     model=model.model_name,
                     content="",
-                    error=str(exc),
+                    error=f"unavailable: {exc}",
                 )
 
-            if attempt < task.policy.max_retries:
+            if attempt < task.policy.max_retries and last and not last.error.startswith(("authentication:", "model_invalid:")):
                 next_attempt = attempt + 2
                 self._emit(
                     event_sink,
