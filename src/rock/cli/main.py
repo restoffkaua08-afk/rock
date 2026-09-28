@@ -11,7 +11,8 @@ from typer.core import TyperGroup
 from rock.agents.cli_agents import ExternalAgentRunner
 from rock.cli.terminal_ui import RockTerminalUI, interactive_prompt
 from rock.config.settings import get_settings
-from rock.core.contracts import Model, Policy, Session, Task, TaskMode
+from rock.core.agent import AgentRuntime
+from rock.core.contracts import Agent, Model, Policy, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
 from rock.core.providers import Provider
 from rock.core.skills import SkillRegistry, default_skill_roots
@@ -186,6 +187,68 @@ def ask(
     """Alias for rock run."""
     selected = [x.strip() for x in agents.split(",")] if agents else None
     _run(prompt, mode, False, selected)
+
+
+@app.command("agent-run")
+def agent_run(
+    prompt: str = typer.Argument(...),
+    model: str | None = typer.Option(None, "--model"),
+    iterations: int = typer.Option(1, "--iterations", min=1, max=16),
+) -> None:
+    """Run Rock's bounded internal model agent without tool execution."""
+    configure_logging(False)
+    settings = get_settings()
+    engine, model_ids = build_engine()
+    if not model_ids:
+        raise typer.BadParameter(
+            "No providers are configured. Use ROCK_MODE=mock or configure at least one API key."
+        )
+
+    selected = model_ids[0]
+    if model:
+        matches = [
+            model_id
+            for model_id in model_ids
+            if model.lower() in {
+                model_id.lower(),
+                engine.models[model_id].provider.lower(),
+                engine.models[model_id].model_name.lower(),
+            }
+        ]
+        if not matches:
+            raise typer.BadParameter(f"Model not found: {model}")
+        selected = matches[0]
+
+    task_id = str(uuid4())
+    selected_model = engine.models[selected]
+    agent = Agent(
+        id=f"agent-{task_id}",
+        name="Rock Agent",
+        model=selected_model,
+        system_policy=(
+            "Work only with the supplied task and model context. "
+            "Do not claim to have executed tools or changed the system."
+        ),
+        max_iterations=iterations,
+    )
+    runtime = AgentRuntime(engine.providers)
+    result = asyncio.run(
+        runtime.execute(
+            agent,
+            prompt,
+            task_id=task_id,
+            timeout=settings.rock_timeout_seconds,
+        )
+    )
+    if result.final_response:
+        console.print(
+            Panel(
+                result.final_response.content or result.final_response.error or "",
+                title=f"Agent: {selected_model.model_name} [{result.status.value}]",
+            )
+        )
+    if result.status.value != "success":
+        raise typer.Exit(code=1)
 
 
 @app.command()

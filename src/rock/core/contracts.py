@@ -233,6 +233,16 @@ class Agent(BaseModel):
     max_iterations: int = 8
 
 
+class AgentRun(BaseModel):
+    agent_id: str
+    task_id: str
+    iterations: int = 0
+    responses: list[Response] = Field(default_factory=list)
+    final_response: Response | None = None
+    status: ExecutionStatus = ExecutionStatus.PENDING
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class Council(BaseModel):
     id: str
     members: list[str]
