@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from rock.agents.cli_agents import ExternalAgentRunner
+from rock.cli.terminal_ui import RockTerminalUI, interactive_prompt
 from rock.config.settings import get_settings
 from rock.core.contracts import Model, Policy, Session, Task, TaskMode
 from rock.core.council import CouncilEngine
@@ -16,6 +17,7 @@ from rock.observability.logging import configure_logging
 from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
 from rock.storage.sqlite import SQLiteStore
+
 
 app = typer.Typer(help="Rock — terminal-first AI orchestration runtime.")
 console = Console()
@@ -71,6 +73,7 @@ def _run(prompt: str, mode: TaskMode, verbose: bool, agent_names: list[str] | No
     configure_logging(verbose)
     settings = get_settings()
     task = _make_task(prompt, mode)
+
     if mode == TaskMode.AGENT:
         runner = ExternalAgentRunner()
         available = {a.name for a in runner.available()}
@@ -78,16 +81,20 @@ def _run(prompt: str, mode: TaskMode, verbose: bool, agent_names: list[str] | No
         names = [name for name in names if name in available]
         if not names:
             raise typer.BadParameter("Nenhum agente externo disponível. Use rock agents.")
+
         async def run_agents():
-            return await asyncio.gather(*[
-                runner.run(name, prompt, task_id=str(uuid4())) for name in names
-            ])
+            return await asyncio.gather(
+                *[runner.run(name, prompt, task_id=str(uuid4())) for name in names]
+            )
+
         executions = asyncio.run(run_agents())
         for execution in executions:
-            console.print(Panel(
-                execution.output.get("stdout", "") or execution.error or "",
-                title=f"Agent: {execution.actor} [{execution.status.value}]",
-            ))
+            console.print(
+                Panel(
+                    execution.output.get("stdout", "") or execution.error or "",
+                    title=f"Agent: {execution.actor} [{execution.status.value}]",
+                )
+            )
         return
 
     engine, model_ids = build_engine()
@@ -101,18 +108,24 @@ def _run(prompt: str, mode: TaskMode, verbose: bool, agent_names: list[str] | No
     session = Session(id=str(uuid4()), task_ids=[task.id])
     store.save_session(session)
 
-    console.print(Panel.fit("ROCK V0.1", subtitle=f"{len(model_ids)} models"))
-    synthesis, verification, responses = asyncio.run(engine.run(task, model_ids))
-    store.save_run(task.id, responses, synthesis, verification)
-
-    for response in responses:
-        status = "✓" if not response.error else "✗"
-        console.print(f"{status} {response.provider}/{response.model}")
-    console.print(Panel(synthesis, title="Synthesis"))
-    console.print(
-        f"Verification: {'PASSED' if verification.passed else 'FAILED'} "
-        f"(confidence={verification.confidence})"
+    ui = RockTerminalUI(console)
+    ui.banner()
+    ui.begin(
+        prompt,
+        mode.value,
+        session.id,
+        [engine.models[model_id].model_name for model_id in model_ids],
     )
+    try:
+        synthesis, verification, responses = asyncio.run(
+            engine.run(task, model_ids, event_sink=ui.event)
+        )
+        store.save_run(task.id, responses, synthesis, verification)
+        ui.finish(synthesis, verification.passed)
+    except Exception as exc:  # noqa: BLE001
+        ui.event("stage", "Runtime", "failed", "erro inesperado", str(exc))
+        ui.finish(f"Rock encontrou um erro: {exc}", False)
+        raise
 
 
 @app.command("run")
@@ -120,7 +133,11 @@ def run(
     prompt: str = typer.Argument(...),
     mode: TaskMode = typer.Option(TaskMode.COUNCIL, "--mode", "-m"),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
-    agents: str | None = typer.Option(None, "--agents", help="Comma-separated external agents for agent mode."),
+    agents: str | None = typer.Option(
+        None,
+        "--agents",
+        help="Comma-separated external agents for agent mode.",
+    ),
 ) -> None:
     """Run a task through Rock's council."""
     selected = [x.strip() for x in agents.split(",")] if agents else None
@@ -191,7 +208,6 @@ def agent(
     cwd: str | None = typer.Option(None, "--cwd"),
 ) -> None:
     """Run one installed external coding agent through Rock."""
-    from uuid import uuid4
     runner = ExternalAgentRunner()
     execution = asyncio.run(runner.run(name, prompt, task_id=str(uuid4()), cwd=cwd))
     console.print(Panel(execution.output.get("stdout", ""), title=f"Agent: {name}"))
@@ -224,11 +240,15 @@ def doctor() -> None:
         "Gemini": settings.gemini_api_key,
     }
     for name, value in keys.items():
-        console.print(f"{'✓' if value else '○'} {name}: {'configured' if value else 'not configured'}")
+        console.print(
+            f"{'✓' if value else '○'} {name}: {'configured' if value else 'not configured'}"
+        )
     console.print(f"✓ Ollama endpoint: {settings.ollama_base_url}")
     runner = ExternalAgentRunner()
     available = runner.available()
-    console.print("✓ External agents: " + (", ".join(a.name for a in available) if available else "none"))
+    console.print(
+        "✓ External agents: " + (", ".join(a.name for a in available) if available else "none")
+    )
     console.print("✓ Skill roots:")
     for root in default_skill_roots():
         console.print(f"  - {root}")
@@ -239,8 +259,23 @@ def root(
     ctx: typer.Context,
     prompt: str | None = typer.Argument(None, help="Optional direct prompt."),
 ) -> None:
-    if ctx.invoked_subcommand is None:
-        if prompt:
-            _run(prompt, TaskMode.COUNCIL, False)
-        else:
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if prompt:
+        _run(prompt, TaskMode.COUNCIL, False)
+        return
+
+    ui = RockTerminalUI(console)
+    ui.banner()
+    console.print("[dim]Digite /help para comandos ou /exit para sair.[/dim]")
+    while True:
+        prompt = interactive_prompt(console)
+        if not prompt:
+            continue
+        if prompt in {"/exit", "/quit"}:
+            break
+        if prompt == "/help":
             console.print(ctx.get_help())
+            continue
+        _run(prompt, TaskMode.COUNCIL, False)
