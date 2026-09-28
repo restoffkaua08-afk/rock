@@ -41,8 +41,8 @@ class EvidenceEngine:
     def detect_conflicts(responses: list[Response]) -> list[Conflict]:
         usable = [r for r in responses if not r.error and r.content.strip()]
         conflicts: list[Conflict] = []
-        for index, left in enumerate(usable):
-            for right in usable[index + 1 :]:
+        for left_index, left in enumerate(usable, 1):
+            for right_index, right in enumerate(usable[left_index:], left_index + 1):
                 left_terms = _key_terms(left.content)
                 right_terms = _key_terms(right.content)
                 overlap = left_terms & right_terms
@@ -52,8 +52,8 @@ class EvidenceEngine:
                 if not contradiction_markers:
                     continue
                 severity = min(1.0, 0.5 + 0.1 * len(contradiction_markers))
-                left_claims = _response_claims(left, index + 1)
-                right_claims = _response_claims(right, index + 2)
+                left_claims = _response_claims(left, left_index)
+                right_claims = _response_claims(right, right_index)
                 claim_map = {**left_claims, **right_claims}
                 conflicts.append(
                     Conflict(
