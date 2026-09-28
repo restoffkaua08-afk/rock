@@ -323,9 +323,11 @@ def doctor(
                     return results
 
                 results = asyncio.run(check_providers())
+                display_names = {"openai": "OpenAI", "anthropic": "Anthropic", "deepseek": "DeepSeek", "perplexity": "Perplexity", "gemini": "Gemini"}
                 for name, model, healthy in results:
+                    display_name = display_names.get(name, name)
                     console.print(
-                        f"{'✓' if healthy else '✗'} {name}: "
+                        f"{'✓' if healthy else '✗'} {display_name}: "
                         f"{'reachable' if healthy else 'unavailable'} | model={model}"
                     )
     else:
