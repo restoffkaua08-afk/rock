@@ -34,7 +34,6 @@ class CouncilEngine:
     def __init__(self, providers: dict[str, Provider], models: dict[str, Model]) -> None:
         self.providers = providers
         self.models = models
-        self._cost_budget: CostBudget | None = None
 
     @staticmethod
     def _emit(
@@ -145,7 +144,6 @@ class CouncilEngine:
     ) -> list[Response]:
         semaphore = asyncio.Semaphore(max(1, task.policy.budget.max_parallel))
         cost_budget = CostBudget(task.policy.budget.max_cost)
-        self._cost_budget = cost_budget
 
         async def one(model_id: str) -> Response:
             model = self.models[model_id]
@@ -236,7 +234,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Critic",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def debate_turn(
@@ -247,6 +245,7 @@ class CouncilEngine:
         *,
         event_sink: EventSink | None = None,
         event_name: str = "Debate",
+        cost_budget: CostBudget | None = None,
     ) -> Response:
         model = self.models[model_id]
         provider = self.providers[model.provider]
@@ -258,7 +257,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name=event_name,
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def synthesize(
@@ -294,7 +293,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Synthesizer",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
 
     async def verify(
@@ -333,7 +332,7 @@ class CouncilEngine:
             event_sink=event_sink,
             event_kind="stage",
             event_name="Verifier",
-            cost_budget=self._cost_budget,
+            cost_budget=cost_budget,
         )
         text = result.content.strip()
         passed = bool(text) and text.upper().startswith("PASS")
