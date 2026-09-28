@@ -143,7 +143,7 @@ class CouncilEngine:
         event_sink: EventSink | None = None,
     ) -> list[Response]:
         semaphore = asyncio.Semaphore(max(1, task.policy.budget.max_parallel))
-        cost_budget = CostBudget(task.policy.budget.max_cost)
+        cost_budget = cost_budget or CostBudget(task.policy.budget.max_cost)
 
         async def one(model_id: str) -> Response:
             model = self.models[model_id]
@@ -365,8 +365,9 @@ class CouncilEngine:
         *,
         event_sink: EventSink | None = None,
     ) -> tuple[str, Verification, list[Response]]:
+        cost_budget = CostBudget(task.policy.budget.max_cost)
         self._emit(event_sink, "stage", "Models", "running", "consultando em paralelo")
-        responses = await self.collect(task, model_ids, event_sink=event_sink)
+        responses = await self.collect(task, model_ids, event_sink=event_sink, cost_budget=cost_budget)
         self._emit(event_sink, "stage", "Models", "success", "respostas recebidas")
 
         usable = self.normalize(responses)
