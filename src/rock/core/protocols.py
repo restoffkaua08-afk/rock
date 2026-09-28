@@ -8,7 +8,7 @@ from rock.core.contracts import CouncilProtocol, ProtocolResult, Response
 
 if TYPE_CHECKING:
     from rock.core.contracts import Task
-    from rock.core.council import CouncilEngine
+    from rock.core.council import CouncilEngine, CostBudget
 
 @dataclass(frozen=True)
 class ProtocolContext:
