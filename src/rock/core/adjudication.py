@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rock.core.contracts import Adjudication, AdjudicationStatus, Conflict, Model, Response, Task
+from rock.core.contracts import Adjudication, AdjudicationStatus, Conflict, Response, Task
 
 
 class AdjudicationEngine:
