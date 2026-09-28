@@ -202,7 +202,12 @@ class CritiqueSynthesisProtocol(CouncilProtocolRunner):
             critique = await engine.critique(
                 context.task, augmented, critic_model, event_sink=event_sink
             )
-        return critique
+        return ProtocolResult(
+            protocol=self.protocol,
+            response=critique,
+            evidence=critique.evidence,
+            metadata={"rounds": rounds},
+        )
 
 def get_protocol(protocol: CouncilProtocol) -> CouncilProtocolRunner:
     return {
