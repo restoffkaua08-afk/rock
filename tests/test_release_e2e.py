@@ -1,9 +1,6 @@
-import asyncio
-
 from typer.testing import CliRunner
 
 from rock.cli.main import app
-from rock.cli import main
 from rock.config.settings import get_settings
 from rock.storage.sqlite import SQLiteStore
 
