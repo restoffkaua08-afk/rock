@@ -5,17 +5,22 @@ from rock.core.providers import Provider
 
 
 class LiteLLMProvider(Provider):
-    def __init__(self, provider_name: str) -> None:
+    def __init__(self, provider_name: str, *, api_base: str | None = None) -> None:
         self.provider_name = provider_name
+        self.api_base = api_base
 
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
         import litellm
 
-        result = await litellm.acompletion(
-            model=model.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            timeout=timeout,
-        )
+        kwargs = {
+            "model": model.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "timeout": timeout,
+        }
+        if self.api_base:
+            kwargs["api_base"] = self.api_base
+
+        result = await litellm.acompletion(**kwargs)
         choice = result.choices[0]
         content = choice.message.content or ""
         usage = getattr(result, "usage", None)
