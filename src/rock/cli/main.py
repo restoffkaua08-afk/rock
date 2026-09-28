@@ -44,6 +44,7 @@ def build_engine() -> tuple[CouncilEngine, list[str]]:
         elif configured:
             provider = LiteLLMProvider(
                 provider_name,
+                api_key=configured if isinstance(configured, str) else None,
                 api_base=settings.ollama_base_url if provider_name == "ollama" else None,
             )
         else:
