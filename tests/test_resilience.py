@@ -131,3 +131,34 @@ async def test_council_stops_new_calls_after_cost_budget_is_reached() -> None:
     assert provider.calls == 1
     assert responses[0].content == "answer"
     assert responses[1].error == "budget_exceeded: cost limit reached"
+
+
+class TimeoutProvider(Provider):
+    async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
+        raise TimeoutError("simulated timeout")
+
+
+@pytest.mark.asyncio
+async def test_council_reports_timeout_status_in_events() -> None:
+    provider = TimeoutProvider()
+    engine = CouncilEngine(
+        {"slow": provider},
+        {"slow:default": Model(id="slow:default", provider="slow", model_name="mock-slow")},
+    )
+    events = []
+
+    def sink(kind: str, name: str, status: str, detail: str, error: str | None = None) -> None:
+        events.append((kind, name, status, detail, error))
+
+    responses = await engine.collect(
+        Task(
+            id="t-timeout",
+            prompt="hello",
+            policy={"max_retries": 0, "timeout_seconds": 0.1},
+        ),
+        ["slow:default"],
+        event_sink=sink,
+    )
+
+    assert responses[0].error == "timeout: provider request timed out"
+    assert any(event[2] == "timeout" for event in events)
