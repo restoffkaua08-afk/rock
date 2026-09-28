@@ -425,4 +425,70 @@ class CouncilEngine:
             verifier_model,
             event_sink=event_sink,
         )
+        if verification.passed or not task.policy.require_verification:
+            return synthesis.content, verification, responses
+
+        max_corrections = max(0, min(task.policy.budget.max_rounds - 1, 4))
+        for correction_round in range(1, max_corrections + 1):
+            self._emit(
+                event_sink,
+                "stage",
+                "Correction",
+                "running",
+                f"rodada {correction_round}/{max_corrections}",
+            )
+            findings = "\n".join(f"- {finding}" for finding in verification.findings)
+            correction = Response(
+                provider="rock",
+                model="verifier",
+                content=(
+                    "VERIFICATION FAILED. Correct the synthesis using these findings "
+                    "before producing the next version:\n"
+                    f"{findings}"
+                ),
+            )
+            synthesis = await self.synthesize(
+                task,
+                usable,
+                correction,
+                synthesizer_model,
+                event_sink=event_sink,
+            )
+            if synthesis.error:
+                return (
+                    "Rock stopped during verification correction because the task budget was exhausted.",
+                    Verification(
+                        target="synthesis",
+                        verifier=f"{self.models[synthesizer_model].provider}/{self.models[synthesizer_model].model_name}",
+                        checks=["verification_loop", "cost_budget"],
+                        passed=False,
+                        findings=[synthesis.error],
+                        confidence=0.0,
+                    ),
+                    responses,
+                )
+            verification = await self.verify(
+                task,
+                synthesis,
+                usable,
+                verifier_model,
+                event_sink=event_sink,
+            )
+            if verification.passed:
+                self._emit(
+                    event_sink,
+                    "stage",
+                    "Correction",
+                    "success",
+                    f"corrigido após {correction_round} rodada(s)",
+                )
+                return synthesis.content, verification, responses
+
+        self._emit(
+            event_sink,
+            "stage",
+            "Correction",
+            "failed",
+            "limite de correções atingido",
+        )
         return synthesis.content, verification, responses
