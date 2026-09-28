@@ -10,7 +10,7 @@ def test_root_prompt_uses_mock_council(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("ROCK_MODE", "mock")
     monkeypatch.setenv("ROCK_DB_PATH", str(tmp_path / "sessions.db"))
 
-    result = runner.invoke(app, ["Explain", "Git", "briefly"])
+    result = runner.invoke(app, ["Explain Git briefly"])
 
     assert result.exit_code == 0, result.output
     assert "Mock synthesis" in result.output
