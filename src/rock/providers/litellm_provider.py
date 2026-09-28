@@ -16,6 +16,20 @@ class LiteLLMProvider(Provider):
         self.api_key = api_key
         self.api_base = api_base
 
+    async def health_check(self) -> bool:
+        try:
+            import litellm
+
+            kwargs = {"model": "openai/gpt-3.5-turbo", "messages": [{"role": "user", "content": "ping"}], "max_tokens": 1, "timeout": 10}
+            if self.api_key:
+                kwargs["api_key"] = self.api_key
+            if self.api_base:
+                kwargs["api_base"] = self.api_base
+            await litellm.acompletion(**kwargs)
+            return True
+        except Exception:
+            return False
+
     async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
         import litellm
 
