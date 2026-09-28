@@ -123,6 +123,22 @@ class Conflict(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class AdjudicationStatus(str, Enum):
+    RESOLVED = "resolved"
+    INCONCLUSIVE = "inconclusive"
+    ESCALATE = "escalate"
+
+
+class Adjudication(BaseModel):
+    conflict_id: str
+    status: AdjudicationStatus
+    decision: str
+    rationale: str = ""
+    supporting_sources: list[str] = Field(default_factory=list)
+    rejected_sources: list[str] = Field(default_factory=list)
+    confidence: float = 0.0
+
+
 class ProtocolResult(BaseModel):
     protocol: CouncilProtocol
     response: Response
