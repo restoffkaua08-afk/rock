@@ -481,6 +481,8 @@ class CouncilEngine:
             synthesis,
             usable,
             verifier_model,
+            evidence=evidence,
+            adjudications=adjudications,
             event_sink=event_sink,
         )
         if verification.passed or not task.policy.require_verification:
