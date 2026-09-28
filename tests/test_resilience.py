@@ -2,7 +2,7 @@ import pytest
 
 from rock.core.contracts import Model, Response, Task
 from rock.core.council import CouncilEngine
-from rock.core.providers import Provider
+from rock.core.providers import Provider, ProviderError
 from rock.providers.mock import MockProvider
 
 
@@ -64,3 +64,33 @@ async def test_council_uses_healthy_provider_for_control_stages() -> None:
     assert responses[0].error == "provider unavailable"
     assert "Mock synthesis" in synthesis
     assert verification.passed
+
+
+class AuthFailProvider(Provider):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate(self, prompt: str, model: Model, *, timeout: float) -> Response:
+        self.calls += 1
+        raise ProviderError("authentication", "invalid API key")
+
+
+@pytest.mark.asyncio
+async def test_council_does_not_retry_authentication_failure() -> None:
+    provider = AuthFailProvider()
+    engine = CouncilEngine(
+        {"auth": provider},
+        {"auth:default": Model(id="auth:default", provider="auth", model_name="mock-auth")},
+    )
+
+    responses = await engine.collect(
+        Task(
+            id="t-auth",
+            prompt="hello",
+            policy={"max_retries": 3},
+        ),
+        ["auth:default"],
+    )
+
+    assert provider.calls == 1
+    assert responses[0].error == "authentication: invalid API key"
