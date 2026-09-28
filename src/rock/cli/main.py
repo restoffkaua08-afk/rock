@@ -19,7 +19,10 @@ from rock.providers.litellm_provider import LiteLLMProvider
 from rock.providers.mock import MockProvider
 from rock.storage.sqlite import SQLiteStore
 
-app = typer.Typer(help="Rock — terminal-first AI orchestration runtime.")
+app = typer.Typer(
+    help="Rock — terminal-first AI orchestration runtime.",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 console = Console()
 
 
@@ -315,6 +318,7 @@ def doctor(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def root(ctx: typer.Context) -> None:
+    get_settings.cache_clear()
     if ctx.invoked_subcommand is not None:
         return
 
