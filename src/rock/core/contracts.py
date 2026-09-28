@@ -91,6 +91,16 @@ class Model(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class Claim(BaseModel):
+    id: str
+    statement: str
+    source: str
+    evidence_id: str | None = None
+    polarity: str | None = None
+    confidence: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class Evidence(BaseModel):
     id: str
     source: str
@@ -98,6 +108,7 @@ class Evidence(BaseModel):
     relevance: float | None = None
     provider: str | None = None
     timestamp: datetime = Field(default_factory=utc_now)
+    claims: list[Claim] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -117,6 +128,7 @@ class Conflict(BaseModel):
     id: str
     topic: str
     claims: list[str] = Field(default_factory=list)
+    claim_ids: list[str] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
     severity: float = 0.5
     resolved: bool = False
