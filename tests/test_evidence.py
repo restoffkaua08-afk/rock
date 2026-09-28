@@ -77,3 +77,25 @@ def test_conflict_contains_claim_ids() -> None:
     )
     assert len(conflicts) == 1
     assert len(conflicts[0].claim_ids) == 2
+
+
+
+def test_adjudication_preserves_conflict_claim_ids() -> None:
+    from rock.core.adjudication import AdjudicationEngine
+
+    conflict = __import__("rock.core.contracts", fromlist=["Conflict"]).Conflict(
+        id="c-claims",
+        topic="feature",
+        claims=["required", "optional"],
+        claim_ids=["response-1-claim-1", "response-2-claim-1"],
+        sources=["a/mock", "b/mock"],
+    )
+    result = AdjudicationEngine.parse(
+        conflict,
+        Response(
+            provider="judge",
+            model="mock",
+            content="RESOLVED\nClaim one is supported.\nConfidence: 0.9",
+        ),
+    )
+    assert result.claim_ids == conflict.claim_ids
