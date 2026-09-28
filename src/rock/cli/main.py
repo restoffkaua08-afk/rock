@@ -289,27 +289,45 @@ def doctor(
     )
 
     if check:
-        engine, model_ids = build_engine()
         if settings.rock_mode.lower() == "mock":
             console.print("✓ Live check skipped: ROCK_MODE=mock")
-        elif not model_ids:
-            console.print("✗ Live check unavailable: no configured online providers")
         else:
-            async def check_providers() -> list[tuple[str, str, bool]]:
-                results = []
-                for model_id in model_ids:
-                    model = engine.models[model_id]
-                    provider = engine.providers[model.provider]
-                    healthy = await provider.health_check(model, timeout=10)
-                    results.append((model.provider, model.model_name, healthy))
-                return results
-
-            results = asyncio.run(check_providers())
-            for name, model, healthy in results:
-                console.print(
-                    f"{'✓' if healthy else '✗'} {name}: "
-                    f"{'reachable' if healthy else 'unavailable'} | model={model}"
+            check_definitions = [
+                ("openai", settings.rock_openai_model, settings.openai_api_key),
+                ("anthropic", settings.rock_anthropic_model, settings.anthropic_api_key),
+                ("deepseek", settings.rock_deepseek_model, settings.deepseek_api_key),
+                ("perplexity", settings.rock_perplexity_model, settings.perplexity_api_key),
+                ("gemini", settings.rock_gemini_model, settings.gemini_api_key),
+            ]
+            providers: dict[str, Provider] = {}
+            models: dict[str, Model] = {}
+            for provider_name, model_name, configured in check_definitions:
+                if not configured:
+                    continue
+                providers[provider_name] = LiteLLMProvider(provider_name, api_key=configured)
+                model_id = f"{provider_name}:doctor"
+                models[model_id] = Model(
+                    id=model_id,
+                    provider=provider_name,
+                    model_name=model_name,
                 )
+
+            if not models:
+                console.print("✗ Live check unavailable: no configured online providers")
+            else:
+                async def check_providers() -> list[tuple[str, str, bool]]:
+                    results = []
+                    for model_id, model in models.items():
+                        healthy = await providers[model.provider].health_check(model, timeout=10)
+                        results.append((model.provider, model.model_name, healthy))
+                    return results
+
+                results = asyncio.run(check_providers())
+                for name, model, healthy in results:
+                    console.print(
+                        f"{'✓' if healthy else '✗'} {name}: "
+                        f"{'reachable' if healthy else 'unavailable'} | model={model}"
+                    )
     else:
         console.print("[dim]Live provider checks disabled. Use: rock doctor --check[/dim]")
 
