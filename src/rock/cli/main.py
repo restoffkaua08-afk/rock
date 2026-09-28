@@ -194,6 +194,7 @@ def agent_run(
     prompt: str = typer.Argument(...),
     model: str | None = typer.Option(None, "--model"),
     iterations: int = typer.Option(1, "--iterations", min=1, max=16),
+    skill: str | None = typer.Option(None, "--skill", help="Skill id to load from the registry."),
 ) -> None:
     """Run Rock's bounded internal model agent without tool execution."""
     configure_logging(False)
@@ -230,8 +231,12 @@ def agent_run(
             "Do not claim to have executed tools or changed the system."
         ),
         max_iterations=iterations,
+        skills=selected_skills,
     )
-    runtime = AgentRuntime(engine.providers)
+    registry = SkillRegistry(default_skill_roots())
+    registry.discover()
+    selected_skills = [skill] if skill else []
+    runtime = AgentRuntime(engine.providers, registry)
     result = asyncio.run(
         runtime.execute(
             agent,
