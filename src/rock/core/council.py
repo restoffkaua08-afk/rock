@@ -223,6 +223,28 @@ class CouncilEngine:
             cost_budget=self._cost_budget,
         )
 
+    async def debate_turn(
+        self,
+        task: Task,
+        model_id: str,
+        prompt: str,
+        *,
+        event_sink: EventSink | None = None,
+        event_name: str = "Debate",
+    ) -> Response:
+        model = self.models[model_id]
+        provider = self.providers[model.provider]
+        return await self._call(
+            provider,
+            model,
+            prompt,
+            task,
+            event_sink=event_sink,
+            event_kind="stage",
+            event_name=event_name,
+            cost_budget=self._cost_budget,
+        )
+
     async def synthesize(
         self,
         task: Task,
@@ -353,6 +375,7 @@ class CouncilEngine:
             critic=task.metadata.get("council_critic_model") or "critic",
             synthesizer=task.metadata.get("council_synthesizer_model") or "synthesizer",
             verifier=task.metadata.get("council_verifier_model") or "verifier",
+            judge=task.metadata.get("council_judge_model") or "judge",
         )
         critic_model = self._resolve_role_model(
             council.critic, control_model, model_ids
@@ -363,11 +386,14 @@ class CouncilEngine:
         verifier_model = self._resolve_role_model(
             council.verifier, control_model, model_ids
         )
+        judge_model = self._resolve_role_model(
+            council.judge, control_model, model_ids
+        )
         protocol_runner = get_protocol(protocol)
         critique = await protocol_runner.critique_rounds(
             self,
             ProtocolContext(task=task, responses=usable),
-            critic_model,
+            judge_model if protocol == CouncilProtocol.DEBATE else critic_model,
             rounds,
             event_sink=event_sink,
         )
