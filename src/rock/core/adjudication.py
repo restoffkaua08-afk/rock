@@ -15,7 +15,6 @@ class AdjudicationEngine:
         *,
         event_sink=None,
     ) -> Adjudication:
-        model: Model = engine.models[model_id]
         prompt = (
             "You are Rock's adjudication agent. Resolve the conflict below using only "
             "the supplied claims and sources. Do not decide by majority. If the evidence "
@@ -31,8 +30,8 @@ class AdjudicationEngine:
             f"CLAIM IDS: {', '.join(conflict.claim_ids)}\n\n"
             "CLAIMS:\n"
             + "\n\n".join(
-                f"- [{claim_id}] {claim}"
-                for claim_id, claim in zip(conflict.claim_ids, conflict.claims, strict=False)
+                f"- [{claim_id}] {conflict.claim_statements.get(claim_id, 'Missing claim text.')}"
+                for claim_id in conflict.claim_ids
             )
         )
         response = await engine.debate_turn(
