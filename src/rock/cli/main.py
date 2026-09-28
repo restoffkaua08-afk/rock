@@ -67,10 +67,29 @@ def _make_task(prompt: str, mode: TaskMode) -> Task:
     )
 
 
-def _run(prompt: str, mode: TaskMode, verbose: bool) -> None:
+def _run(prompt: str, mode: TaskMode, verbose: bool, agent_names: list[str] | None = None) -> None:
     configure_logging(verbose)
     settings = get_settings()
     task = _make_task(prompt, mode)
+    if mode == TaskMode.AGENT:
+        runner = ExternalAgentRunner()
+        available = {a.name for a in runner.available()}
+        names = agent_names or sorted(available)
+        names = [name for name in names if name in available]
+        if not names:
+            raise typer.BadParameter("Nenhum agente externo disponível. Use rock agents.")
+        async def run_agents():
+            return await asyncio.gather(*[
+                runner.run(name, prompt, task_id=str(uuid4())) for name in names
+            ])
+        executions = asyncio.run(run_agents())
+        for execution in executions:
+            console.print(Panel(
+                execution.output.get("stdout", "") or execution.error or "",
+                title=f"Agent: {execution.actor} [{execution.status.value}]",
+            ))
+        return
+
     engine, model_ids = build_engine()
     if not model_ids:
         raise typer.BadParameter(
@@ -101,18 +120,22 @@ def run(
     prompt: str = typer.Argument(...),
     mode: TaskMode = typer.Option(TaskMode.COUNCIL, "--mode", "-m"),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
+    agents: str | None = typer.Option(None, "--agents", help="Comma-separated external agents for agent mode."),
 ) -> None:
     """Run a task through Rock's council."""
-    _run(prompt, mode, verbose)
+    selected = [x.strip() for x in agents.split(",")] if agents else None
+    _run(prompt, mode, verbose, selected)
 
 
 @app.command("ask")
 def ask(
     prompt: str = typer.Argument(...),
     mode: TaskMode = typer.Option(TaskMode.COUNCIL, "--mode", "-m"),
+    agents: str | None = typer.Option(None, "--agents"),
 ) -> None:
     """Alias for rock run."""
-    _run(prompt, mode, False)
+    selected = [x.strip() for x in agents.split(",")] if agents else None
+    _run(prompt, mode, False, selected)
 
 
 @app.command()
