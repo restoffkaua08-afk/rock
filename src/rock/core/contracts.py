@@ -39,6 +39,7 @@ class Budget(BaseModel):
     max_cost: float | None = None
     max_parallel: int = 5
     max_rounds: int = 3
+    max_tool_calls: int = 20
 
 
 class Policy(BaseModel):
@@ -46,6 +47,8 @@ class Policy(BaseModel):
     max_retries: int = 2
     budget: Budget = Field(default_factory=Budget)
     approval_required: bool = False
+    allow_tools: bool = True
+    require_verification: bool = True
 
 
 class Capability(str, Enum):
@@ -148,6 +151,7 @@ class Skill(BaseModel):
     instructions: str = ""
     required_capabilities: set[Capability] = Field(default_factory=set)
     tools: list[str] = Field(default_factory=list)
+    source: str = "rock"
 
 
 class Tool(BaseModel):
@@ -167,6 +171,7 @@ class Agent(BaseModel):
     capabilities: set[Capability] = Field(default_factory=set)
     tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
+    max_iterations: int = 8
 
 
 class Council(BaseModel):
