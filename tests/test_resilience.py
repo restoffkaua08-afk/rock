@@ -45,3 +45,22 @@ def test_task_budget_can_carry_cost_limit() -> None:
 
     assert task.policy.budget.max_cost == 0.50
     assert task.policy.budget.max_parallel == 2
+
+
+@pytest.mark.asyncio
+async def test_council_uses_healthy_provider_for_control_stages() -> None:
+    providers = {"down": FailingProvider(), "ok": MockProvider("ok")}
+    models = {
+        "down:default": Model(id="down:default", provider="down", model_name="mock-down"),
+        "ok:default": Model(id="ok:default", provider="ok", model_name="mock-ok"),
+    }
+    engine = CouncilEngine(providers, models)
+
+    synthesis, verification, responses = await engine.run(
+        Task(id="t-control-fallback", prompt="hello"),
+        ["down:default", "ok:default"],
+    )
+
+    assert responses[0].error == "provider unavailable"
+    assert "Mock synthesis" in synthesis
+    assert verification.passed
